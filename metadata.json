@@ -1,0 +1,8 @@
+{
+  "name": "CendekiaMetrix",
+  "description": "\"Mapping Talent, Learning Style & IQ to Your Perfect Major\" - Sistem Analisis Potensi Multi-Jenjang Siswa Sekolah Cendekia BAZNAS (SCB)",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

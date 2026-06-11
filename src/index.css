@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* Base custom classes to match the 'Sleek Interface' specification */
+.glass-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+}
+
+.dark .glass-card {
+  background: rgba(15, 23, 42, 0.9);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(51, 65, 85, 0.5);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card {
+  border-left: 4px solid #2563eb;
+  background-color: #ffffff;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.dark .stat-card {
+  background-color: #0f172a;
+  border-left: 4px solid #3b82f6;
+}
+
+.stat-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Print Styles optimization */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  /* Hide interactive margins like sidebars, menu tabs, and headers */
+  header, footer, nav, aside, button, .no-print {
+    display: none !important;
+  }
+  
+  /* Make report container fill the paper margins completely */
+  #printable-report-card {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    display: block !important;
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Force dark mode texts back to readable light theme print default */
+  p, h1, h2, h3, h4, h5, span, lg, div {
+    color: black !important;
+  }
+}
+
