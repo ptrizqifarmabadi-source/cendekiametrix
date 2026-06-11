@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from "react";
 import { FullAppState, HafalanQuranType } from "../types";
-import { Search, ArrowUpDown, Trash2, Plus, Check, FileText, Filter, Users, GraduationCap, Compass, BrainCircuit, BookOpen } from "lucide-react";
+import { Search, ArrowUpDown, Trash2, Plus, Check, FileText, Filter, Users, GraduationCap, Compass, BrainCircuit, BookOpen, Download, FileSpreadsheet, Printer } from "lucide-react";
 
 interface CompletedTestRecord {
   id: string;
@@ -194,6 +194,69 @@ export default function RekapHasilSiswa({ appState, isAdmin }: RekapHasilSiswaPr
     }
   };
 
+  // Export database to formatted Excel (CSV with UTF-8 BOM)
+  const handleExportExcel = () => {
+    if (filteredRecords.length === 0) {
+      alert("Tidak ada data siswa yang tersedia untuk diekspor dengan kriteria filter saat ini.");
+      return;
+    }
+    
+    const headers = [
+      "No",
+      "Nama Siswa",
+      "NISN",
+      "Rumpun/Kelas",
+      "Rata-Rata Rapor",
+      "Skor IQ",
+      "Kategori IQ",
+      "Asesmen Kognitif / Karir (RIASEC atau Gaya Belajar)",
+      "Rekomendasi Utama BK (Pilihan Jurusan/Studi)",
+      "Tanggal Input"
+    ];
+
+    const csvRows = [headers.join(",")];
+
+    filteredRecords.forEach((rec, idx) => {
+      const isSmp = rec.kelas.includes("Kelas 7") || rec.kelas.includes("Kelas 8") || rec.kelas.includes("Kelas 9");
+      const testResult = rec.topRiasec.map(r => r.replace(/"/g, '""')).join(" | ");
+      const majors = rec.rekomendasiJurusan.map(j => j.replace(/"/g, '""')).join(" / ");
+      
+      const row = [
+        idx + 1,
+        `"${rec.nama.replace(/"/g, '""')}"`,
+        `"${rec.nisn}"`,
+        `"${rec.kelas}"`,
+        isSmp ? "-" : rec.avgRapor,
+        rec.iqScore,
+        `"${rec.iqCategory}"`,
+        `"${testResult}"`,
+        `"${majors}"`,
+        `"${rec.tanggalTes}"`
+      ];
+      csvRows.push(row.join(","));
+    });
+
+    const csvContent = "\uFEFF" + csvRows.join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Rekap_Kolektif_CendekiaMetrix_${classFilter.replace(/[\s/]+/g, "_")}_${new Date().toISOString().split("T")[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Export/Print database to a formatted PDF transcript document
+  const handleExportPdf = () => {
+    if (filteredRecords.length === 0) {
+      alert("Tidak ada data siswa yang tersedia untuk dicetak.");
+      return;
+    }
+    window.print();
+  };
+
   // Filter & Sort core logic
   const filteredRecords = records
     .filter(rec => {
@@ -238,10 +301,46 @@ export default function RekapHasilSiswa({ appState, isAdmin }: RekapHasilSiswaPr
   ];
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-sm space-y-6 no-print">
+    <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-sm space-y-6 print:border-none print:shadow-none print:p-0 print:text-black">
       
+      {/* Formal Header - Only Visible on PDF Printout */}
+      <div className="hidden print:block border-b-2 border-slate-800 pb-4 mb-6">
+        <div className="flex items-center justify-between gap-6">
+          <img 
+            src="https://lh3.googleusercontent.com/d/1ugonzA_1B-ukGoqRRUIQbLK8QPIzo26V" 
+            alt="Sekolah Cendekia BAZNAS Logo" 
+            className="h-20 w-auto object-contain"
+            referrerPolicy="no-referrer"
+          />
+          <div className="text-right space-y-1">
+            <h1 className="text-lg font-black tracking-tight text-black font-display uppercase">
+              REKAPITULASI HASIL ASESMEN SISWA (CENDEKIA METRIX)
+            </h1>
+            <h2 className="text-xs font-bold text-slate-800 uppercase">
+              Sekolah Cendekia BAZNAS • Jajaran Bimbingan Konseling (BK)
+            </h2>
+            <p className="text-[9px] text-slate-600 font-mono">
+              Jl. Masjid Baitul Ilmi, Cemplang, Cibungbulang, Bogor, Jawa Barat 16630
+            </p>
+          </div>
+        </div>
+        
+        {/* Report metadata summary bar */}
+        <div className="mt-4 pt-3 border-t border-slate-200 grid grid-cols-3 text-[10px] font-medium text-slate-705">
+          <div>
+            <strong>Kategori Kelas:</strong> {classFilter === "All" ? "Semua Kelas" : classFilter}
+          </div>
+          <div className="text-center">
+            <strong>Jumlah Peserta:</strong> {filteredRecords.length} Siswa Terarsip
+          </div>
+          <div className="text-right">
+            <strong>Tanggal Unduh:</strong> {new Date().toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' })}
+          </div>
+        </div>
+      </div>
+
       {/* Upper banner info */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-gray-100 dark:border-gray-800 pb-5 gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-gray-100 dark:border-gray-800 pb-5 gap-4 no-print">
         <div className="space-y-1">
           <div className="inline-flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 font-mono font-bold uppercase tracking-wider">
             <Users className="h-4 w-4 animate-bounce" />
@@ -255,36 +354,56 @@ export default function RekapHasilSiswa({ appState, isAdmin }: RekapHasilSiswaPr
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2.5">
+        <div className="flex flex-wrap gap-2 md:gap-2.5">
           {/* Add active user score record */}
           {!isCurrentUserSaved ? (
             <button
               onClick={handleSaveCurrentUser}
-              className="px-4.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer no-print"
             >
-              <Plus className="h-4 w-4" /> Simpan Hasil Anda ke Rekapan
+              <Plus className="h-4 w-4" /> Simpan Hasil Anda
             </button>
           ) : (
-            <div className="px-4.5 py-2.5 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-250 font-bold text-xs rounded-xl flex items-center gap-1.5">
-              <Check className="h-4 w-4 stroke-[3px]" /> Terdaftar di Rekapan
+            <div className="px-3.5 py-2 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-250 font-bold text-xs rounded-xl flex items-center gap-1.5 no-print">
+              <Check className="h-4 w-4 stroke-[3px]" /> Terdaftar
             </div>
           )}
 
+          {/* Export CSV/Excel Button */}
+          <button
+            onClick={handleExportExcel}
+            className="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/30 text-emerald-700 dark:text-emerald-400 border border-slate-200 dark:border-slate-800 hover:border-emerald-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer no-print"
+            title="Ekspor Seluruh Basis Data ke Excel (CSV)"
+          >
+            <FileSpreadsheet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <span>Format Excel</span>
+          </button>
+
+          {/* Export PDF Print Button */}
+          <button
+            onClick={handleExportPdf}
+            className="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/30 text-blue-700 dark:text-blue-400 border border-slate-200 dark:border-slate-800 hover:border-blue-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer no-print"
+            title="Cetak Laporan atau Simpan PDF Resmi"
+          >
+            <Printer className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <span>Cetak PDF</span>
+          </button>
+
           <button
             onClick={handleResetRecords}
-            className="px-4 py-2.5 border border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-850 hover:text-red-500 rounded-xl text-xs font-bold transition-all cursor-pointer"
+            className="px-3.5 py-2 border border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-850 hover:text-red-500 rounded-xl text-xs font-bold transition-all cursor-pointer no-print"
             title="Kembalikan ke data awal"
           >
-            Reset Daftar
+            Reset
           </button>
 
           {isAdmin && (
             <button
               onClick={handleClearAllRecords}
-              className="px-3.5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
+              className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer no-print"
               title="MENGHAPUS SEMUA DATA PESERTA"
             >
-              <Trash2 className="h-4 w-4" /> Hapus Semua Data
+              <Trash2 className="h-4 w-4" /> Hapus Semua
             </button>
           )}
         </div>
@@ -299,7 +418,7 @@ export default function RekapHasilSiswa({ appState, isAdmin }: RekapHasilSiswaPr
       )}
 
       {/* Filter and search utilities controls */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 no-print">
         
         {/* Search input field */}
         <div className="relative">
@@ -337,21 +456,21 @@ export default function RekapHasilSiswa({ appState, isAdmin }: RekapHasilSiswaPr
       </div>
 
       {/* Main Table database collection */}
-      <div className="border border-slate-150 dark:border-slate-850 rounded-2xl overflow-hidden overflow-x-auto">
+      <div className="border border-slate-150 dark:border-slate-850 rounded-2xl overflow-hidden overflow-x-auto print:border-none print:overflow-visible">
         <table className="w-full border-collapse text-left">
           <thead>
-            <tr className="bg-slate-50 dark:bg-slate-950 border-b border-slate-150 dark:border-slate-850 text-[10px] font-bold font-mono text-slate-400 uppercase tracking-wider">
+            <tr className="bg-slate-50 dark:bg-slate-950 border-b border-slate-150 dark:border-slate-850 text-[10px] font-bold font-mono text-slate-400 uppercase tracking-wider print:bg-white print:text-black">
               <th className="p-4">Identitas Siswa</th>
               <th className="p-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors" onClick={() => handleSort("avgRapor")}>
                 <div className="flex items-center gap-1">
                   Rata Rapor
-                  <ArrowUpDown className="h-3 w-3" />
+                  <ArrowUpDown className="h-3 w-3 no-print" />
                 </div>
               </th>
               <th className="p-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors" onClick={() => handleSort("iqScore")}>
                 <div className="flex items-center gap-1">
                   IQ Kognitif
-                  <ArrowUpDown className="h-3 w-3" />
+                  <ArrowUpDown className="h-3 w-3 no-print" />
                 </div>
               </th>
               <th className="p-4">Kode Holland RIASEC</th>
@@ -359,10 +478,10 @@ export default function RekapHasilSiswa({ appState, isAdmin }: RekapHasilSiswaPr
               <th className="p-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors" onClick={() => handleSort("tanggalTes")}>
                 <div className="flex items-center gap-1">
                   Tanggal Input
-                  <ArrowUpDown className="h-3 w-3" />
+                  <ArrowUpDown className="h-3 w-3 no-print" />
                 </div>
               </th>
-              <th className="p-4 text-center">Aksi / Status</th>
+              <th className="p-4 text-center no-print">Aksi / Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-150 dark:divide-slate-850 text-xs">
@@ -470,7 +589,7 @@ export default function RekapHasilSiswa({ appState, isAdmin }: RekapHasilSiswaPr
                   </td>
 
                   {/* Actions (Delete only custom userAdded items for safety, or all if Admin) */}
-                  <td className="p-4 text-center">
+                  <td className="p-4 text-center no-print">
                     {(rec.isUserAdded || isAdmin) ? (
                       <button
                         onClick={() => {
@@ -497,6 +616,27 @@ export default function RekapHasilSiswa({ appState, isAdmin }: RekapHasilSiswaPr
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Formal Footer Signature Block - Only Visible on PDF Printout */}
+      <div className="hidden print:block mt-12 pt-6 border-t border-slate-200">
+        <div className="grid grid-cols-2 text-center text-xs font-semibold text-black gap-12 leading-relaxed">
+          <div className="space-y-16">
+            <p>Mengetahui,<br /><span className="font-bold text-slate-800">Kepala Sekolah Cendekia BAZNAS</span></p>
+            <div className="border-b border-black w-48 mx-auto" />
+            <p className="text-[10px] text-slate-500 font-mono">NIP. _______________________</p>
+          </div>
+          <div className="space-y-16">
+            <p>Bogor, {new Date().toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' })}<br /><span className="font-bold text-slate-800">Koordinator Bimbingan Konseling (BK)</span></p>
+            <div className="border-b border-black w-48 mx-auto" />
+            <p className="text-[10px] text-slate-500 font-mono">NIP. _______________________</p>
+          </div>
+        </div>
+        
+        {/* Footnote system branding info */}
+        <div className="text-center text-[9px] text-slate-400 font-mono mt-16 pt-3 border-t border-slate-100">
+          Dokumen hasil kompilasi kognitif digital disahkan secara otomatis oleh platform Cendekia Metrix. Seluruh data kognitif, rata-rata rapor, dan rekap tipe karir dilindungi serta dipelihara resmi oleh Jajaran BK Sekolah Cendekia BAZNAS.
+        </div>
       </div>
 
     </div>
