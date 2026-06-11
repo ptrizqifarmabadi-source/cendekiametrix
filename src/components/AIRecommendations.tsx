@@ -369,7 +369,7 @@ export default function AIRecommendations({
           disabled={aiRecommendation.status !== "success"}
           className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-150 disabled:text-gray-400 disabled:cursor-not-allowed dark:disabled:bg-gray-850 dark:disabled:text-gray-600 rounded-xl shadow-md transition-colors inline-flex items-center gap-2 text-sm font-medium cursor-pointer"
         >
-          Prediksi Jalur Masuk
+          {appState.jenjang === "SMP" ? "Lanjut ke Evaluasi" : "Prediksi Jalur Masuk"}
         </button>
       </div>
 

@@ -122,7 +122,11 @@ interface CompletedTestRecord {
 
 const DEFAULT_RECORDS: CompletedTestRecord[] = [];
 
-export default function AdminAnalytics() {
+interface AdminAnalyticsProps {
+  userRole?: "peserta" | "admin" | "bk_smp" | "bk_sma" | null;
+}
+
+export default function AdminAnalytics({ userRole }: AdminAnalyticsProps) {
   const [records, setRecords] = useState<CompletedTestRecord[]>([]);
   const [activeClassFilter, setActiveClassFilter] = useState<string>("All");
   const [syncKey, setSyncKey] = useState<number>(0);
@@ -135,8 +139,18 @@ export default function AdminAnalytics() {
         const parsed = JSON.parse(stored) as CompletedTestRecord[];
         // Filter out any older mock/dummy records that are not explicitly user-added
         const cleaned = parsed.filter(r => r.isUserAdded === true);
-        setRecords(cleaned);
+        
+        // Save cleaned back to local storage (keep absolute database intact)
         localStorage.setItem("sipetakuliah_cohort_recap", JSON.stringify(cleaned));
+
+        // Filter local state based on roles
+        let filtered = cleaned;
+        if (userRole === "bk_smp") {
+          filtered = cleaned.filter(st => st.kelas && (st.kelas.includes("7") || st.kelas.includes("8") || st.kelas.includes("9") || st.kelas.toLowerCase().includes("smp")));
+        } else if (userRole === "bk_sma") {
+          filtered = cleaned.filter(st => st.kelas && (st.kelas.includes("10") || st.kelas.includes("11") || st.kelas.includes("12") || st.kelas.toLowerCase().includes("sma") || st.kelas.toLowerCase().includes("ma")));
+        }
+        setRecords(filtered);
       } catch (e) {
         setRecords(DEFAULT_RECORDS);
       }
@@ -169,22 +183,46 @@ export default function AdminAnalytics() {
     (rec) => activeClassFilter === "All" || rec.kelas === activeClassFilter
   );
 
+  const isSmp = userRole === "bk_smp" || (filteredRecords.length > 0 && filteredRecords.every(st => st.kelas && (st.kelas.includes("7") || st.kelas.includes("8") || st.kelas.includes("9") || st.kelas.toLowerCase().includes("smp"))));
+
   // 1. DYNAMIC LIST OF AVAILABLE CLASSES
+  const baseClasses = userRole === "bk_smp"
+    ? [
+        "Kelas 7 Ikhwan",
+        "Kelas 7 Akhwat",
+        "Kelas 8 Ikhwan",
+        "Kelas 8 Akhwat",
+        "Kelas 9 Ikhwan",
+        "Kelas 9 Akhwat"
+      ]
+    : userRole === "bk_sma"
+    ? [
+        "Kelas 10 Ikhwan", 
+        "Kelas 10 Akhwat", 
+        "Kelas 11 Ikhwan", 
+        "Kelas 11 Akhwat", 
+        "Kelas 12 Ikhwan", 
+        "Kelas 12 Akhwat"
+      ]
+    : [
+        "Kelas 7 Ikhwan",
+        "Kelas 7 Akhwat",
+        "Kelas 8 Ikhwan",
+        "Kelas 8 Akhwat",
+        "Kelas 9 Ikhwan",
+        "Kelas 9 Akhwat",
+        "Kelas 10 Ikhwan", 
+        "Kelas 10 Akhwat", 
+        "Kelas 11 Ikhwan", 
+        "Kelas 11 Akhwat", 
+        "Kelas 12 Ikhwan", 
+        "Kelas 12 Akhwat"
+      ];
+
   const availableClasses = [
     "All", 
-    "Kelas 7 Ikhwan",
-    "Kelas 7 Akhwat",
-    "Kelas 8 Ikhwan",
-    "Kelas 8 Akhwat",
-    "Kelas 9 Ikhwan",
-    "Kelas 9 Akhwat",
-    "Kelas 10 Ikhwan", 
-    "Kelas 10 Akhwat", 
-    "Kelas 11 Ikhwan", 
-    "Kelas 11 Akhwat", 
-    "Kelas 12 Ikhwan", 
-    "Kelas 12 Akhwat",
-    ...(Array.from(new Set(records.map((r) => r.kelas))) as string[]).filter(c => c && !["Kelas 7 Ikhwan", "Kelas 7 Akhwat", "Kelas 8 Ikhwan", "Kelas 8 Akhwat", "Kelas 9 Ikhwan", "Kelas 9 Akhwat", "Kelas 10 Ikhwan", "Kelas 10 Akhwat", "Kelas 11 Ikhwan", "Kelas 11 Akhwat", "Kelas 12 Ikhwan", "Kelas 12 Akhwat"].includes(c))
+    ...baseClasses,
+    ...(Array.from(new Set(records.map((r) => r.kelas))) as string[]).filter(c => c && !baseClasses.includes(c))
   ];
 
   // 2. STATISTICS COMPUTATION
@@ -324,7 +362,9 @@ export default function AdminAnalytics() {
               Dashboard <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-amber-300">Infografis &amp; Rekap</span> 
             </h2>
             <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
-              Pemantauan sebaran kecerdasan kognitif (IQ), karakter karir Holland (RIASEC), prestasi akademis rapor, serta pemetaan bimbingan karir pendaftaran kuliah bagi santri secara real-time.
+              {isSmp 
+                ? "Pemantauan sebaran kecerdasan kognitif (IQ), karakter gaya belajar (VAK), prestasi akademis rapor, serta pemetaan minat bakat ekstrakurikuler kesiswaan bagi santri secara real-time."
+                : "Pemantauan sebaran kecerdasan kognitif (IQ), karakter karir Holland (RIASEC), prestasi akademis rapor, serta pemetaan bimbingan karir pendaftaran kuliah bagi santri secara real-time."}
             </p>
           </div>
 
@@ -341,7 +381,9 @@ export default function AdminAnalytics() {
       {/* Printable Report Header (Hidden on screen, visible during printing) */}
       <div className="hidden print:block space-y-4 text-center border-b-2 border-slate-900 pb-4">
         <h2 className="text-lg font-black uppercase">SEKOLAH CENDEKIA BAZNAS (SCB)</h2>
-        <h1 className="text-2xl font-bold tracking-wide">LAPORAN REKAPITULASI ASESMEN BIMBINGAN KARIR</h1>
+        <h1 className="text-2xl font-bold tracking-wide">
+          {isSmp ? "LAPORAN REKAPITULASI ASESMEN PENGEMBANGAN DIRI & MINAT SISWA SMP" : "LAPORAN REKAPITULASI ASESMEN BIMBINGAN KARIR & KULIAH"}
+        </h1>
         <p className="text-xs font-mono">
           Tanggal Cetak: {new Date().toLocaleDateString("id-ID")} • Status Kelas: {activeClassFilter === "All" ? "Semua Kelas Terdaftar" : activeClassFilter}
         </p>
@@ -618,7 +660,9 @@ export default function AdminAnalytics() {
                 Delineasi Rapor Santri
               </h3>
               <p className="text-[11px] text-slate-500">
-                Peta capaian indeks akademik guna memberikan rekomendasi perguruan tinggi negeri / PTKIN yang sesuai dengan rumpun nilai.
+                {isSmp 
+                  ? "Peta capaian indeks akademik guna memberikan rekomendasi pendalaman akademik kognitif lanjut, pengembangan diri, dan beasiswa kesiswaan."
+                  : "Peta capaian indeks akademik guna memberikan rekomendasi perguruan tinggi negeri / PTKIN yang sesuai dengan rumpun nilai."}
               </p>
             </div>
 
@@ -663,14 +707,16 @@ export default function AdminAnalytics() {
           <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-5">
             <div className="space-y-1">
               <div className="text-[10px] font-bold text-blue-600 dark:text-blue-450 font-mono uppercase tracking-wider">
-                Career Target Analytics
+                {isSmp ? "Development Focus Analytics" : "Career Target Analytics"}
               </div>
               <h3 className="text-base font-black text-slate-905 dark:text-white flex items-center gap-1.5">
                 <TrendingUp className="h-5 w-5 text-blue-600" />
-                Prodi Pilihan Terpopuler
+                {isSmp ? "Fokus Pengembangan & Ekskul Terpopuler" : "Prodi Pilihan Terpopuler"}
               </h3>
               <p className="text-[11px] text-slate-500">
-                Peringkat jurusan dan program studi yang paling direkomendasikan sistem bagi rombongan saringan kelas terpilih.
+                {isSmp 
+                  ? "Peringkat aspek pengembangan kognitif, keagamaan, dan ekstrakurikuler yang paling diunggulkan saringan kelas terpilih."
+                  : "Peringkat jurusan dan program studi yang paling direkomendasikan sistem bagi rombongan saringan kelas terpilih."}
               </p>
             </div>
 
@@ -733,7 +779,7 @@ export default function AdminAnalytics() {
         
         {/* Pass isAdmin prop and trigger re-render on sync change key */}
         <div key={syncKey}>
-          <RekapHasilSiswa appState={EMPTY_APP_STATE} isAdmin={true} />
+          <RekapHasilSiswa appState={EMPTY_APP_STATE} isAdmin={userRole === "admin"} userRole={userRole} />
         </div>
       </div>
 

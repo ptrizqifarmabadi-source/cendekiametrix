@@ -27,7 +27,9 @@ import {
   MappingProgress,
   PotentialPathways,
   MainPathwayRecommendation,
-  StudentRanking
+  StudentRanking,
+  SmpDetailedEvaluation,
+  SmpExtracurricularAndStrategy
 } from "./components/DashboardComponents";
 
 // Navigation icons
@@ -145,8 +147,8 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
   // New admin and role state management
-  const [userRole, setUserRole] = useState<"peserta" | "admin" | null>(() => {
-    return (localStorage.getItem("sipetakuliah_current_role") as "peserta" | "admin" | null) || null;
+  const [userRole, setUserRole] = useState<"peserta" | "admin" | "bk_smp" | "bk_sma" | null>(() => {
+    return (localStorage.getItem("sipetakuliah_current_role") as any) || null;
   });
   const [adminUsername, setAdminUsername] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
@@ -159,11 +161,11 @@ export default function App() {
   const [studentLoginError, setStudentLoginError] = useState("");
   const [studentShowSuggestions, setStudentShowSuggestions] = useState(false);
 
-  const handleSetRole = (role: "peserta" | "admin" | null) => {
+  const handleSetRole = (role: "peserta" | "admin" | "bk_smp" | "bk_sma" | null) => {
     setUserRole(role);
     if (role) {
       localStorage.setItem("sipetakuliah_current_role", role);
-      if (role === "admin") {
+      if (role === "admin" || role === "bk_smp" || role === "bk_sma") {
         setActiveMenu(10); // Default to Admin Analytics & Infographics
       } else {
         setActiveMenu(0); // Default to Student Dashboard
@@ -287,7 +289,29 @@ export default function App() {
             nisn: resolvedNisn,
             jenisKelamin: resolvedGender,
             kelas: initialKelas
-          }
+          },
+          keagamaan: jenjang === "SMP" ? {
+            ...DEFAULT_STATE.keagamaan,
+            nilai: {
+              pai: 0,
+              bahasaArab: 0
+            }
+          } : DEFAULT_STATE.keagamaan,
+          akademik: jenjang === "SMP" ? {
+            ...DEFAULT_STATE.akademik,
+            nilaiRapor: {
+              matematika: 0,
+              bahasaIndonesia: 0,
+              bahasaInggris: 0,
+              ipa: 0,
+              ips: 0
+            },
+            simulasiTes: {
+              literasi: 0,
+              numerasi: 0,
+              penalaran: 0
+            }
+          } : DEFAULT_STATE.akademik
         });
       }
     } else {
@@ -301,7 +325,29 @@ export default function App() {
           nisn: resolvedNisn,
           jenisKelamin: resolvedGender,
           kelas: initialKelas
-        }
+        },
+        keagamaan: jenjang === "SMP" ? {
+          ...DEFAULT_STATE.keagamaan,
+          nilai: {
+            pai: 0,
+            bahasaArab: 0
+          }
+        } : DEFAULT_STATE.keagamaan,
+        akademik: jenjang === "SMP" ? {
+          ...DEFAULT_STATE.akademik,
+          nilaiRapor: {
+            matematika: 0,
+            bahasaIndonesia: 0,
+            bahasaInggris: 0,
+            ipa: 0,
+            ips: 0
+          },
+          simulasiTes: {
+            literasi: 0,
+            numerasi: 0,
+            penalaran: 0
+          }
+        } : DEFAULT_STATE.akademik
       });
     }
 
@@ -321,7 +367,7 @@ export default function App() {
     }
   };
 
-  const menuItems = userRole === "admin"
+  const menuItems = (userRole === "admin" || userRole === "bk_smp" || userRole === "bk_sma")
     ? [
         { id: 10, label: "Info Grafis & BK", icon: LayoutDashboard },
         { id: 9, label: "Cetak Lapor Siswa", icon: Award }
@@ -334,7 +380,7 @@ export default function App() {
         { id: 4, label: "Minat Bakat (Ekskul)", icon: Trophy },
         { id: 6, label: "Tes IQ Kognitif", icon: BrainCircuit },
         { id: 7, label: "Rekomendasi Studi AI", icon: Brain },
-        { id: 9, label: "Laporan Kelulusan", icon: Award }
+        { id: 9, label: "Evaluasi Bakat & Potensi", icon: Award }
       ]
     : [
         { id: 0, label: "Dashboard Utama", icon: LayoutDashboard },
@@ -606,20 +652,28 @@ export default function App() {
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
-                    if (adminUsername.trim() === "admin" && adminPassword === "@Scbjuara1") {
+                    const user = adminUsername.trim();
+                    const pwd = adminPassword;
+                    if (user === "admin" && pwd === "@Scbjuara1") {
                       setLoginError("");
                       handleSetRole("admin");
+                    } else if (user === "BKSMP" && pwd === "@SMPjuara1") {
+                      setLoginError("");
+                      handleSetRole("bk_smp");
+                    } else if (user === "BKSMA" && pwd === "@SMAjuara1") {
+                      setLoginError("");
+                      handleSetRole("bk_sma");
                     } else {
-                      setLoginError("ID atau Password Admin Salah!");
+                      setLoginError("ID atau Password Admin / Guru BK Salah!");
                     }
                   }}
                   className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800"
                 >
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">ID Admin</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">ID Admin / Guru BK</label>
                     <input
                       type="text"
-                      placeholder="Masukkan ID Admin"
+                      placeholder="Masukkan ID Admin atau BK"
                       value={adminUsername}
                       onChange={(e) => setAdminUsername(e.target.value)}
                       className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none text-slate-900 dark:text-white font-mono"
@@ -868,11 +922,23 @@ export default function App() {
 
                 {/* Right sidebar details widgets */}
                 <div className="space-y-6">
-                  {/* Top highlight path */}
-                  <MainPathwayRecommendation appState={appState} onNavigate={handleNavigate} />
+                  {appState.jenjang === "SMP" ? (
+                    <>
+                      {/* SMP Extracurricular and learning strategy tactics (paling penting) */}
+                      <SmpExtracurricularAndStrategy appState={appState} onNavigate={handleNavigate} />
 
-                  {/* Compact potential paths */}
-                  <PotentialPathways appState={appState} onNavigate={handleNavigate} />
+                      {/* SMP Descriptive detailed qualitative reports */}
+                      <SmpDetailedEvaluation appState={appState} onNavigate={handleNavigate} />
+                    </>
+                  ) : (
+                    <>
+                      {/* Top highlight path */}
+                      <MainPathwayRecommendation appState={appState} onNavigate={handleNavigate} />
+
+                      {/* Compact potential paths */}
+                      <PotentialPathways appState={appState} onNavigate={handleNavigate} />
+                    </>
+                  )}
                 </div>
 
               </div>
@@ -964,11 +1030,11 @@ export default function App() {
           )}
 
           {activeMenu === 9 && (
-            <LaporanAkhir appState={appState} isAdmin={userRole === "admin"} />
+            <LaporanAkhir appState={appState} isAdmin={userRole === "admin" || userRole === "bk_smp" || userRole === "bk_sma"} userRole={userRole} />
           )}
 
           {activeMenu === 10 && (
-            <AdminAnalytics />
+            <AdminAnalytics userRole={userRole} />
           )}
 
         </main>

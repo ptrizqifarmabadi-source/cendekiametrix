@@ -25,9 +25,10 @@ import RekapHasilSiswa from "./RekapHasilSiswa";
 interface LaporanAkhirProps {
   appState: FullAppState;
   isAdmin?: boolean;
+  userRole?: "peserta" | "admin" | "bk_smp" | "bk_sma" | null;
 }
 
-export default function LaporanAkhir({ appState, isAdmin }: LaporanAkhirProps) {
+export default function LaporanAkhir({ appState, isAdmin, userRole }: LaporanAkhirProps) {
   const { profile, keagamaan, akademik, prestasiEkskul, minatBakat, iqTest, aiRecommendation } = appState;
   const printAreaRef = useRef<HTMLDivElement>(null);
 
@@ -42,13 +43,19 @@ export default function LaporanAkhir({ appState, isAdmin }: LaporanAkhirProps) {
       try {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
-          setAllStudents(parsed);
+          let filtered = parsed;
+          if (userRole === "bk_smp") {
+            filtered = parsed.filter(st => st.kelas && (st.kelas.includes("7") || st.kelas.includes("8") || st.kelas.includes("9") || st.kelas.toLowerCase().includes("smp")));
+          } else if (userRole === "bk_sma") {
+            filtered = parsed.filter(st => st.kelas && (st.kelas.includes("10") || st.kelas.includes("11") || st.kelas.includes("12") || st.kelas.toLowerCase().includes("sma") || st.kelas.toLowerCase().includes("ma")));
+          }
+          setAllStudents(filtered);
         }
       } catch (e) {
         // ignore
       }
     }
-  }, []);
+  }, [userRole]);
 
   // Filter indices based on chosen class
   const filteredIndices = allStudents
@@ -66,7 +73,7 @@ export default function LaporanAkhir({ appState, isAdmin }: LaporanAkhirProps) {
     }
   }, [classFilter, allStudents, selectedIndex]);
 
-  const selectedStudent = selectedIndex !== -1 ? allStudents[selectedIndex] : null;
+  const selectedStudent = isAdmin && selectedIndex !== -1 ? allStudents[selectedIndex] : null;
 
   const isSmp = appState.jenjang === "SMP" || (selectedStudent ? (selectedStudent.kelas?.includes("7") || selectedStudent.kelas?.includes("8") || selectedStudent.kelas?.includes("9") || selectedStudent.kelas?.includes("SMP")) : false);
 
@@ -263,6 +270,127 @@ export default function LaporanAkhir({ appState, isAdmin }: LaporanAkhirProps) {
     year: "numeric"
   });
 
+  const getPenguatanTambahan = () => {
+    const dominant = stats.topRiasec && stats.topRiasec.length > 0 ? stats.topRiasec[0] : null;
+    if (!dominant) {
+      return {
+        title: "Strategi Belajar Terintegrasi (General Integrated Learning)",
+        tips: [
+          "Membagi waktu belajar mandiri dengan metode Pomodoro (25 menit belajar terarah, 5 menit jeda istirahat ringan) untuk menjaga fokus kognitif.",
+          "Mencatat intisari pelajaran di wisma menggunakan skema poin penjelasan berwarna guna mempertajam daya ingat jangka panjang.",
+          "Mendiskusikan materi yang belum dipahami secara aktif kepada bimbingan guru pendamping serta rekan kesiswaan sealmamater."
+        ]
+      };
+    }
+
+    if (isSmp) {
+      switch (dominant.key) {
+        case "V":
+          return {
+            title: "Strategi Visual-Spatial Metakognitif (Gaya Belajar Visual)",
+            tips: [
+              "Peta Konsep & Mind Mapping: Visualisasikan korelasi antara bab-bab sains terpadu (IPA) dan sejarah (IPS) dalam satu bagan berwarna yang saling bersambung.",
+              "Metode Flashcards & Ringkasan Berpigmen: Rangkum hafalan kosakata bahasa Arab & Inggris menggunakan kartu warna-warni berpola indah di asrama.",
+              "Posisi Fokus Visual Depan: Selalu usahakan menempati barisan depan di kelas untuk menyerap paparan penulisan guru di papan tulis secara utuh tanpa distraksi pandangan."
+            ]
+          };
+        case "A":
+          return {
+            title: "Strategi Auditori Berkelompok & Ekspresif (Gaya Belajar Auditori)",
+            tips: [
+              "Metode Perekaman Hafalan: Rekam pembacaan surat Al-Quran atau bait dalil hadits Anda melalui perekam suara, lalu putar kembali saat beristirahat santai.",
+              "Diskusi Pengulas Bersisian (Peer Learning): Saling melempar pertanyaan lisan secara interaktif bersama rekan sekamar asrama/wisma.",
+              "Teknik Verbalisasi Berbisik: Bacalah paragraf buku teori utama secara bersuara perlahan untuk mengaktifkan stimulasi pendengaran yang mempercepat retensi memori."
+            ]
+          };
+        case "K":
+          return {
+            title: "Strategi Taktil-Kinestetik Interaktif (Gaya Belajar Kinestetik)",
+            tips: [
+              "Asosiasi Memori Gerak Tubuh: Gunakan ketukan jari, isyarat tangan, atau peragaan gestur tubuh ringan ketika menghafal runutan hadits kesiswaan.",
+              "Teknik Pomodoro Aktif: Belajar mandiri terfokus selama 25 menit, diselingi 5 menit melakukan aktivitas fisik ringan seperti peregangan otot, push-up, atau berjalan memutari asrama.",
+              "Eksperimen & Observasi Fisik: Perbanyak pemahaman sains melaui proyek praktek, pengamatan botani keanekaragaman hayati riil di alam terbuka sekolah Bogor."
+            ]
+          };
+        default:
+          return {
+            title: "Strategi Belajar Terstruktur Seimbang",
+            tips: [
+              "Gunakan catatan berkode warna untuk memilah prioritas belajar harian kesiswaan di Sekolah Cendekia BAZNAS.",
+              "Lakukan pengulangan materi (spaced repetition) berjarak 1 hari, 3 hari, dan 7 hari untuk mengamankan retensi memori ujian.",
+              "Konsultasikan hasil nilai belajar secara berkala dengan konselor BK asrama untuk memelihara kestabilan mental belajar."
+            ]
+          };
+      }
+    } else {
+      switch (dominant.key) {
+        case "R":
+          return {
+            title: "Strategi Belajar Berbasis Taktis & Konkret (Realistic Action Style)",
+            tips: [
+              "Koneksi Teori Ke Sistem Mekanis: Hubungkan rumus fisika dan matematika dengan implementasi kelistrikan, struktur bangun mekanik, atau fenomena ketangkasan fisik.",
+              "Latihan Berbasis Simulasi Nyata: Fokuskan jam belajar mandiri pada pengerjaan studi kasus, eksperimen lab mandiri, dan penulisan laporan teknis terapan.",
+              "Belajar Melalui Re-Assembling: Pecahkan soal-soal hitungan rumit dengan cara membongkar langkah formulanya satu per satu dari akhir (backward-chaining)."
+            ]
+          };
+        case "I":
+          return {
+            title: "Strategi Belajar Investigatif-Konseptual Mandiri (Investigative Analytical Style)",
+            tips: [
+              "Riset Pustaka & Analisis Kritis: Cari latar belakang fakta historis atau pembuktian rumus secara mandiri di perpustakaan digital untuk memperkuat fondasi ingatan.",
+              "Eksplorasi Soal Konstruktif HOTS: Asah ketajaman bernalar kognitif Anda lewat penyelesaian soal-soal bernalar tinggi (Higher Order Thinking Skills) di atas rata-rata.",
+              "Diskusi Teoretis Terbuka: Diskusikan teori sains tingkat lanjut atau paradigma sosial bersama guru BK dan mentor akademik kesiswaan."
+            ]
+          };
+        case "A":
+          return {
+            title: "Strategi Belajar Ekspresif & Metafora Kreatif (Artistic Creative Style)",
+            tips: [
+              "Asosiasi Estetis & Peta Visual: Gambarkan relasi antar konsep teoritis sosiologi atau sejarah ke dalam bentuk kliping infografis, narasi fiksi, atau ekspresi analogi seni bela diri.",
+              "Fleksibilitas Belajar Multi-Instrumen: Gunakan musik instrumen minim lirik untuk menemani belajar, atau buat lagu berirama melodi khusus guna menghafal kaidah tata bahasa Arab.",
+              "Fleksibilitas Desain Catatan: Tulis catatan belajar mandiri menggunakan jurnal pribadi dengan tata benta-grid yang dinamis dan ilustratif."
+            ]
+          };
+        case "S":
+          return {
+            title: "Strategi Belajar Mengajar Sebaya & Kolaboratif (Social Interpersonal Style)",
+            tips: [
+              "Penerapan Metode Peer-Teaching: Jelaskan kembali pokok materi yang baru dikuasai kepada kawan yang sedang kesulitan; mengajar adalah cara belajar terbaik.",
+              "Sinergi Belajar Kelompok (Study Circle): Aktif dalam kelompok belajar asrama untuk bertukar sudut pandang penyelesaian tugas secara sinergis.",
+              "Pelajaran Komparasi Sosio-Emosional: Kaitkan ilmu kemanusiaan dan sejarah dengan dampak sosial, moralitas, serta dinamika interpersonal di sekitar asrama."
+            ]
+          };
+        case "E":
+          return {
+            title: "Strategi Belajar Berorientasi Target & Kompetitif (Enterprising Driver Style)",
+            tips: [
+              "Targeting & Peta Statistik: Buat grafik pencapaian skor simulasi belajar mandiri Anda secara berkala, lalu tantang diri Anda untuk terus mendaki grafik melampaui rekor pribadi.",
+              "Kepemimpinan Diskusi Kelompok: Ambil peran kepemimpinan atau pembicara utama dalam penugasan presentasi kelompok sekolah kelas guna mendorong keterlibatan nalar aktif.",
+              "Koneksi Studi Kasus Manajerial: Sangkutpautkan materi ekonomi atau geografi dengan taktik negosiasi, tata kelola kepemimpinan, dan manajemen proyek nyata."
+            ]
+          };
+        case "C":
+          return {
+            title: "Strategi Belajar Terstruktur & Manajemen Sistemik (Conventional Organized Style)",
+            tips: [
+              "Time-Blocking & Manajemen Pola Disiplin: Buat agenda mingguan yang presisi di asrama, tentukan slot waktu tetap untuk subjek spesifik secara konsisten.",
+              "Catatan Berpoin Klasifikasi Rapi: Catat pelajaran dengan format hierarki bernomor (1.a.i), tabel rangkuman teratur, dan indeks glosarium buatan sendiri.",
+              "Evaluasi Progress Terukur: Buat list lembar kendali cheklist harian atas bab-bab buku pelajaran yang sudah dibaca dan dipahami sepenuhnya."
+            ]
+          };
+        default:
+          return {
+            title: "Strategi Belajar Terstruktur Seimbang",
+            tips: [
+              "Gunakan catatan berkode warna untuk memilah prioritas belajar harian kesiswaan di Sekolah Cendekia BAZNAS.",
+              "Lakukan pengulangan materi (spaced repetition) berjarak 1 hari, 3 hari, dan 7 hari untuk mengamankan retensi memori ujian.",
+              "Konsultasikan hasil nilai belajar secara berkala dengan konselor BK asrama untuk memelihara kestabilan mental belajar."
+            ]
+          };
+      }
+    }
+  };
+
   return (
     <div className="space-y-6">
       
@@ -288,92 +416,125 @@ export default function LaporanAkhir({ appState, isAdmin }: LaporanAkhirProps) {
         </div>
       </div>
 
-      {/* Record switcher (Hidden when printing via no-print) */}
-      <div className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl flex flex-col lg:flex-row justify-between items-center gap-4 no-print shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/45 text-blue-650 dark:text-blue-400 flex items-center justify-center shrink-0">
-            <Users className="h-5 w-5" />
+      {/* Record switcher (Hidden when printing via no-print or if user is non-admin) */}
+      {isAdmin && (
+        <div className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl flex flex-col lg:flex-row justify-between items-center gap-4 no-print shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/45 text-blue-650 dark:text-blue-400 flex items-center justify-center shrink-0">
+              <Users className="h-5 w-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider font-mono">
+                Navigasi Peta Laporan Siswa
+              </h4>
+              <p className="text-[11px] text-gray-500">
+                Gunakan tanda panah di samping untuk beralih dan melihat cetak laporan siswa lainnya secara bergantian.
+              </p>
+            </div>
           </div>
-          <div>
-            <h4 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider font-mono">
-              Navigasi Peta Laporan Siswa
-            </h4>
-            <p className="text-[11px] text-gray-500">
-              Gunakan tanda panah di samping untuk beralih dan melihat cetak laporan siswa lainnya secara bergantian.
+
+          <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-end">
+            {/* Class Filter Selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-black text-slate-700 dark:text-slate-400 font-mono uppercase tracking-wider shrink-0 no-print">
+                Filter Kelas:
+              </span>
+              <select
+                value={classFilter}
+                onChange={(e) => setClassFilter(e.target.value)}
+                className="px-2.5 py-2.5 bg-white dark:bg-gray-950 text-slate-800 dark:text-slate-100 border border-gray-200 dark:border-gray-800 rounded-lg text-xs font-bold font-mono focus:outline-none cursor-pointer"
+              >
+                <option value="All">Semua Kelas</option>
+                {Array.from(new Set([
+                  ...(userRole === "bk_smp"
+                    ? [
+                        "Kelas 7 Ikhwan", "Kelas 7 Akhwat",
+                        "Kelas 8 Ikhwan", "Kelas 8 Akhwat",
+                        "Kelas 9 Ikhwan", "Kelas 9 Akhwat"
+                      ]
+                    : userRole === "bk_sma"
+                    ? [
+                        "Kelas 10 Ikhwan", "Kelas 10 Akhwat",
+                        "Kelas 11 Ikhwan", "Kelas 11 Akhwat",
+                        "Kelas 12 Ikhwan", "Kelas 12 Akhwat"
+                      ]
+                    : [
+                        "Kelas 7 Ikhwan", "Kelas 7 Akhwat",
+                        "Kelas 8 Ikhwan", "Kelas 8 Akhwat",
+                        "Kelas 9 Ikhwan", "Kelas 9 Akhwat",
+                        "Kelas 10 Ikhwan", "Kelas 10 Akhwat",
+                        "Kelas 11 Ikhwan", "Kelas 11 Akhwat",
+                        "Kelas 12 Ikhwan", "Kelas 12 Akhwat"
+                      ]
+                  ),
+                  ...allStudents.map(s => s.kelas).filter(Boolean)
+                ])).map((cl) => (
+                  <option key={cl} value={cl}>
+                    {cl}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="h-6 w-[1px] bg-slate-300 dark:bg-slate-800 hidden sm:block"></div>
+
+            <button
+              onClick={handlePrevStudent}
+              disabled={filteredIndices.length === 0}
+              className="p-2 ml-1 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-gray-750 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-850 hover:text-blue-650 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+              title="Siswa Sebelumnya"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+
+            <select
+              value={selectedIndex}
+              onChange={(e) => setSelectedIndex(parseInt(e.target.value))}
+              className="px-3.5 py-2.5 bg-white dark:bg-gray-950 text-slate-800 dark:text-slate-100 border border-gray-200 dark:border-gray-800 rounded-lg text-xs font-bold font-mono focus:outline-none min-w-[200px] cursor-pointer"
+            >
+              <option value={-1}>
+                {profile.nama ? `Siswa Aktif: ${profile.nama}` : "— Pilih Nama Siswa —"}
+              </option>
+              {allStudents.map((st, idx) => {
+                if (classFilter !== "All" && st.kelas !== classFilter) return null;
+                return (
+                  <option key={st.id} value={idx}>
+                    {`DB: ${st.nama} (${st.kelas})`}
+                  </option>
+                );
+              })}
+            </select>
+
+            <button
+              onClick={handleNextStudent}
+              disabled={filteredIndices.length === 0}
+              className="p-2 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-gray-750 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-850 hover:text-blue-650 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+              title="Siswa Selanjutnya"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {((userRole === "admin" || userRole === "bk_smp" || userRole === "bk_sma") && selectedIndex === -1 && !profile.nama) ? (
+        <div className="bg-slate-50 dark:bg-slate-900/50 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl p-12 text-center space-y-4 shadow-sm">
+          <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto shadow-inner border border-blue-100 dark:border-blue-900/30">
+            <Users className="h-8 w-8 animate-pulse" />
+          </div>
+          <div className="space-y-1.5 max-w-md mx-auto">
+            <h3 className="font-extrabold text-slate-900 dark:text-white text-base font-sans">
+              Belum Ada Siswa yang Dipilih
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-sans">
+              Silakan pilih nama siswa dari menu dropdown di atas atau gunakan filter kelas untuk menampilkan, mengevaluasi, dan mencetak Laporan Hasil Capaian Asesmen.
             </p>
           </div>
         </div>
-
-        <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-end">
-          {/* Class Filter Selector */}
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-black text-slate-700 dark:text-slate-400 font-mono uppercase tracking-wider shrink-0 no-print">
-              Filter Kelas:
-            </span>
-            <select
-              value={classFilter}
-              onChange={(e) => setClassFilter(e.target.value)}
-              className="px-2.5 py-2.5 bg-white dark:bg-gray-950 text-slate-800 dark:text-slate-100 border border-gray-200 dark:border-gray-800 rounded-lg text-xs font-bold font-mono focus:outline-none cursor-pointer"
-            >
-              <option value="All">Semua Kelas</option>
-              {Array.from(new Set([
-                "Kelas 10 Ikhwan", 
-                "Kelas 10 Akhwat", 
-                "Kelas 11 Ikhwan", 
-                "Kelas 11 Akhwat", 
-                "Kelas 12 Ikhwan", 
-                "Kelas 12 Akhwat",
-                ...allStudents.map(s => s.kelas).filter(Boolean)
-              ])).map((cl) => (
-                <option key={cl} value={cl}>
-                  {cl}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="h-6 w-[1px] bg-slate-300 dark:bg-slate-800 hidden sm:block"></div>
-
-          <button
-            onClick={handlePrevStudent}
-            disabled={filteredIndices.length === 0}
-            className="p-2 ml-1 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-gray-750 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-850 hover:text-blue-650 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
-            title="Siswa Sebelumnya"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-
-          <select
-            value={selectedIndex}
-            onChange={(e) => setSelectedIndex(parseInt(e.target.value))}
-            className="px-3.5 py-2.5 bg-white dark:bg-gray-950 text-slate-800 dark:text-slate-100 border border-gray-200 dark:border-gray-800 rounded-lg text-xs font-bold font-mono focus:outline-none min-w-[200px] cursor-pointer"
-          >
-            <option value={-1}>
-              {profile.nama ? `Siswa Aktif: ${profile.nama}` : "Draft Siswa Aktif"}
-            </option>
-            {allStudents.map((st, idx) => {
-              if (classFilter !== "All" && st.kelas !== classFilter) return null;
-              return (
-                <option key={st.id} value={idx}>
-                  {`DB: ${st.nama} (${st.kelas})`}
-                </option>
-              );
-            })}
-          </select>
-
-          <button
-            onClick={handleNextStudent}
-            disabled={filteredIndices.length === 0}
-            className="p-2 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-gray-750 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-850 hover:text-blue-650 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
-            title="Siswa Selanjutnya"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </button>
-        </div>
-      </div>
-
-      {/* Main Printable Content certificate layout */}
-      <div 
+      ) : (
+        <>
+          {/* Main Printable Content certificate layout */}
+          <div 
         ref={printAreaRef}
         className="bg-white dark:bg-gray-900 border border-gray-150 dark:border-gray-850 rounded-2xl p-6 md:p-10 shadow-sm print:shadow-none print:border-none print:p-0 space-y-8 print:text-black print:bg-white"
         id="printable-report-card"
@@ -664,6 +825,52 @@ export default function LaporanAkhir({ appState, isAdmin }: LaporanAkhirProps) {
           </div>
         </div>
 
+        {/* 4b. Penguatan Tambahan: Saran Optimalisasi Belajar Mandiri */}
+        {(() => {
+          const penguatan = getPenguatanTambahan();
+          return (
+            <div className="bg-slate-50 dark:bg-gray-950 p-5 rounded-xl border border-gray-150 dark:border-gray-850 space-y-4">
+              <div className="text-[11px] font-black text-emerald-650 dark:text-emerald-400 uppercase tracking-widest font-mono flex items-center gap-1.5 border-b border-gray-100 dark:border-gray-850 pb-2">
+                <Sparkles className="h-4 w-4 text-emerald-600" />
+                Penguatan Tambahan: Rekomendasi Optimalisasi Proses Belajar
+              </div>
+              <div className="space-y-3.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[9px] font-mono tracking-wider font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded uppercase">
+                    FOKUS GAYA BELAJAR
+                  </span>
+                  <span className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wide">
+                    {penguatan.title}
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-650 dark:text-gray-400 leading-relaxed italic border-l-2 border-emerald-500 pl-2.5">
+                  Berdasarkan instrumen asesmen diagnostik Sekolah Cendekia BAZNAS, berikut adalah tindak lanjut taktis terukur yang disarankan agar proses penyerapan materi Anda berjalan maksimal:
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {penguatan.tips.map((tip, index) => {
+                    const [heading, body] = tip.split(": ");
+                    return (
+                      <div key={index} className="p-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-850 rounded-lg flex flex-col justify-start space-y-1 shadow-sm">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-4.5 h-4.5 rounded-full bg-emerald-500 text-white font-mono text-[9px] font-bold flex items-center justify-center shrink-0">
+                            {index + 1}
+                          </span>
+                          <span className="text-[10px] font-extrabold text-gray-950 dark:text-white uppercase tracking-wider">
+                            {body ? heading : `Saran ${index + 1}`}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-gray-650 dark:text-gray-300 leading-relaxed pt-1">
+                          {body || heading}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* 5. Validation counselor footers signatures stamps */}
         <div className="grid grid-cols-2 gap-4 pt-10 border-t border-dashed border-gray-200 dark:border-gray-800 print:pt-14">
           <div className="text-center text-xs space-y-16">
@@ -696,11 +903,15 @@ export default function LaporanAkhir({ appState, isAdmin }: LaporanAkhirProps) {
           )}
         </p>
       </div>
+        </>
+      )}
 
       {/* Recap & Aggregated Student Database Results */}
-      <div className="pt-4">
-        <RekapHasilSiswa appState={appState} isAdmin={isAdmin} />
-      </div>
+      {isAdmin && (
+        <div className="pt-4">
+          <RekapHasilSiswa appState={appState} isAdmin={userRole === "admin"} userRole={userRole} />
+        </div>
+      )}
 
     </div>
   );

@@ -56,23 +56,26 @@ export function ProfileHeader({ appState, onNavigate }: ComponentProps) {
 
 // 2. AssessmentProgress: Global Checklist Progress Tracker Meter
 export function AssessmentProgress({ appState, onNavigate }: ComponentProps) {
-  const { keagamaan, akademik, prestasiEkskul, minatBakat, iqTest } = appState;
+  const { keagamaan, akademik, prestasiEkskul, minatBakat, iqTest, gayaBelajar } = appState;
+  const isSmp = appState.jenjang === "SMP";
 
   const getCompletionState = () => {
     let completedModules = 0;
-    const totalModules = 6; // Data Siswa, Keagamaan, Akademik, Prestasi, Minat Bakat, IQ
+    const totalModules = isSmp ? 4 : 6;
 
     if (appState.profile.nama !== "") completedModules++;
-    // Keagamaan is deemed complete if at least some nilai or hafalan is touched
-    if (keagamaan.prestasi.length > 0 || Object.values(keagamaan.nilai).some(v => v > 0)) completedModules++;
-    // Akademik
-    if (Object.values(akademik.nilaiRapor).some(v => v > 0) || akademik.prestasi.length > 0) completedModules++;
-    // Prestasi
-    if (prestasiEkskul.ekskul.length > 0 || Object.values(prestasiEkskul.tingkatPrestasi).some(v => v > 0)) completedModules++;
-    // Minat Bakat
-    if (minatBakat.completed) completedModules++;
-    // IQ Test
-    if (iqTest.completed) completedModules++;
+
+    if (isSmp) {
+      if (gayaBelajar?.completed) completedModules++;
+      if (prestasiEkskul.smpCompleted) completedModules++;
+      if (iqTest.completed) completedModules++;
+    } else {
+      if (keagamaan.prestasi.length > 0 || Object.values(keagamaan.nilai).some(v => v > 0)) completedModules++;
+      if (Object.values(akademik.nilaiRapor).some(v => v > 0) || akademik.prestasi.length > 0) completedModules++;
+      if (prestasiEkskul.ekskul.length > 0 || Object.values(prestasiEkskul.tingkatPrestasi).some(v => v > 0)) completedModules++;
+      if (minatBakat.completed) completedModules++;
+      if (iqTest.completed) completedModules++;
+    }
 
     const percent = Math.round((completedModules / totalModules) * 100);
     return { completedModules, totalModules, percent };
@@ -94,7 +97,9 @@ export function AssessmentProgress({ appState, onNavigate }: ComponentProps) {
       </div>
 
       <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-5">
-        *Lengkapi data di seluruh panel menu pengujian di sidebar luar agar mesin AI menyuguhkan rekomendasi prapendaftaran universitas dengan validasi penuh.
+        {isSmp
+          ? "*Lengkapi data di seluruh panel menu pengujian di sidebar luar agar mesin AI menyuguhkan laporan detail, rekomendasi kegiatan sekolah, ekstrakurikuler, dan strategi belajar dengan analisis penuh."
+          : "*Lengkapi data di seluruh panel menu pengujian di sidebar luar agar mesin AI menyuguhkan rekomendasi prapendaftaran universitas dengan validasi penuh."}
       </p>
     </div>
   );
@@ -102,16 +107,24 @@ export function AssessmentProgress({ appState, onNavigate }: ComponentProps) {
 
 // 3. MappingProgress: Details checklist checkboxes
 export function MappingProgress({ appState, onNavigate }: ComponentProps) {
-  const { keagamaan, akademik, prestasiEkskul, minatBakat, iqTest } = appState;
+  const { keagamaan, akademik, prestasiEkskul, minatBakat, iqTest, gayaBelajar } = appState;
+  const isSmp = appState.jenjang === "SMP";
 
-  const STATUS_LIST = [
-    { label: "Data Diri Siswa", key: "profile", isDone: appState.profile.nama !== "", menuId: 1, desc: "Identitas dasar kesiswaan" },
-    { label: "Potensi Jalur Keagamaan", key: "keagamaan", isDone: Object.values(keagamaan.nilai).some(v => v > 0), menuId: 2, desc: "Hafalan Al-Quran & mapel PAI" },
-    { label: "Potensi Ujian Akademik", key: "akademik", isDone: Object.values(akademik.nilaiRapor).some(v => v > 0), menuId: 3, desc: "Nilai rapor luring & latihan UTBK" },
-    { label: "Bakat & Prestasi Ekskul", key: "prestasi", isDone: prestasiEkskul.ekskul.length > 0 || Object.values(prestasiEkskul.tingkatPrestasi).some(v => v > 0), menuId: 4, desc: "Kuantitas juara & kepemimpinan" },
-    { label: "Kecenderungan Minat Holland", key: "minatBakat", isDone: minatBakat.completed, menuId: 5, desc: "Kecocokan 60 asimilasi RIASEC" },
-    { label: "Simulasi IQ Kognitif", key: "iqTest", isDone: iqTest.completed, menuId: 6, desc: "80 standard kognitif penalaran" }
-  ];
+  const STATUS_LIST = isSmp
+    ? [
+        { label: "Data Diri Siswa", key: "profile", isDone: appState.profile.nama !== "", menuId: 1, desc: "Identitas dasar kesiswaan" },
+        { label: "Kuis Gaya Belajar (VAK)", key: "gayaBelajar", isDone: !!gayaBelajar?.completed, menuId: 11, desc: "Gaya belajar kognitif dominan" },
+        { label: "Bakat & Prestasi Ekskul", key: "prestasi", isDone: !!prestasiEkskul.smpCompleted, menuId: 4, desc: "Minat ekstrakurikuler & prestasi unggul" },
+        { label: "Simulasi IQ Kognitif", key: "iqTest", isDone: iqTest.completed, menuId: 6, desc: "Standard kognitif penalaran logis" }
+      ]
+    : [
+        { label: "Data Diri Siswa", key: "profile", isDone: appState.profile.nama !== "", menuId: 1, desc: "Identitas dasar kesiswaan" },
+        { label: "Potensi Jalur Keagamaan", key: "keagamaan", isDone: Object.values(keagamaan.nilai).some(v => v > 0), menuId: 2, desc: "Hafalan Al-Quran & mapel PAI" },
+        { label: "Potensi Ujian Akademik", key: "akademik", isDone: Object.values(akademik.nilaiRapor).some(v => v > 0), menuId: 3, desc: "Nilai rapor luring & latihan UTBK" },
+        { label: "Bakat & Prestasi Ekskul", key: "prestasi", isDone: prestasiEkskul.ekskul.length > 0 || Object.values(prestasiEkskul.tingkatPrestasi).some(v => v > 0), menuId: 4, desc: "Kuantitas juara & kepemimpinan" },
+        { label: "Kecenderungan Minat Holland", key: "minatBakat", isDone: minatBakat.completed, menuId: 5, desc: "Kecocokan 60 asimilasi RIASEC" },
+        { label: "Simulasi IQ Kognitif", key: "iqTest", isDone: iqTest.completed, menuId: 6, desc: "80 standard kognitif penalaran" }
+      ];
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4 shadow-sm">
@@ -400,3 +413,431 @@ export function StudentRanking({ appState, onNavigate }: ComponentProps) {
     </div>
   );
 }
+
+// 7. SmpDetailedEvaluation: High-fidelity detailed qualitative checklist/report instead of college tracks for SMP students
+export function SmpDetailedEvaluation({ appState, onNavigate }: ComponentProps) {
+  const { iqTest, gayaBelajar, prestasiEkskul } = appState;
+
+  const iqVal = iqTest.iqScore || 100;
+
+  // IQ classification
+  const getIqClass = (score: number) => {
+    if (score >= 130) return "Sangat Superior";
+    if (score >= 120) return "Superior";
+    if (score >= 110) return "Rata-rata Tinggi";
+    if (score >= 90) return "Rata-rata";
+    return "Rata-rata Rendah";
+  };
+
+  // VAK Gaya Belajar dominant determination (inline calculation)
+  const scoresVAK = { V: 0, A: 0, K: 0 };
+  Object.entries(gayaBelajar?.answers || {}).forEach(([qIdStr, val]) => {
+    const qId = parseInt(qIdStr);
+    if (qId >= 1 && qId <= 10) scoresVAK.V += val;
+    else if (qId >= 11 && qId <= 20) scoresVAK.A += val;
+    else if (qId >= 21 && qId <= 30) scoresVAK.K += val;
+  });
+
+  const labelsVAK = {
+    V: "Visual (Melihat)",
+    A: "Auditori (Mendengar)",
+    K: "Kinestetik (Mempraktikkan)"
+  };
+
+  const sortedVAK = (["V", "A", "K"] as ("V" | "A" | "K")[]).map(key => ({
+    key,
+    label: labelsVAK[key],
+    percentage: Math.round((scoresVAK[key] / 50) * 100) || 0
+  })).sort((a, b) => b.percentage - a.percentage);
+
+  const topGayaBelajar = sortedVAK[0];
+
+  // SMP Extracurricular dominant determination
+  const smpAnswers = prestasiEkskul?.smpAnswers || {};
+  const scoresDomain = { ScienceTech: 0, Sports: 0, Leadership: 0, ArtsMusic: 0 };
+  const mappings = {
+    1: { 1: "ScienceTech", 2: "Sports", 3: "Leadership", 4: "ArtsMusic" },
+    2: { 1: "ScienceTech", 2: "Sports", 3: "Leadership", 4: "ArtsMusic" },
+    3: { 1: "ScienceTech", 2: "Sports", 3: "Leadership", 4: "ArtsMusic" },
+    4: { 1: "ScienceTech", 2: "Sports", 3: "Leadership", 4: "ArtsMusic" },
+    5: { 1: "ScienceTech", 2: "Sports", 3: "Leadership", 4: "ArtsMusic" },
+    6: { 1: "ScienceTech", 2: "Sports", 3: "Leadership", 4: "ArtsMusic" },
+    7: { 1: "ScienceTech", 2: "Sports", 3: "Leadership", 4: "ArtsMusic" },
+    8: { 1: "ScienceTech", 2: "Sports", 3: "Leadership", 4: "ArtsMusic" },
+    9: { 1: "ScienceTech", 2: "Sports", 3: "Leadership", 4: "ArtsMusic" },
+    10: { 1: "ScienceTech", 2: "Sports", 3: "Leadership", 4: "ArtsMusic" },
+    11: { 1: "ScienceTech", 2: "Sports", 3: "Leadership", 4: "ArtsMusic" },
+    12: { 1: "ScienceTech", 2: "Sports", 3: "Leadership", 4: "ArtsMusic" }
+  };
+
+  Object.entries(smpAnswers).forEach(([qIdStr, optIdVal]) => {
+    const qId = parseInt(qIdStr) as keyof typeof mappings;
+    const optId = optIdVal as number;
+    if (mappings[qId]) {
+      const domain = mappings[qId][optId as 1 | 2 | 3 | 4];
+      if (domain) {
+        scoresDomain[domain as keyof typeof scoresDomain]++;
+      }
+    }
+  });
+
+  const domainLabels = {
+    ScienceTech: "Sains & Teknologi",
+    Sports: "Olahraga & Fisik",
+    Leadership: "Kepemimpinan & Sosial",
+    ArtsMusic: "Seni Kreatif & Musik"
+  };
+
+  const sortedDomain = (Object.keys(scoresDomain) as (keyof typeof scoresDomain)[]).map(key => ({
+    key,
+    label: domainLabels[key],
+    score: scoresDomain[key]
+  })).sort((a, b) => b.score - a.score);
+
+  const topBakat = sortedDomain[0];
+
+  return (
+    <div className="bg-gradient-to-br from-indigo-50 to-blue-100/25 dark:from-slate-900/40 dark:to-slate-950/20 rounded-2xl p-5 border-l-[4px] border-l-blue-500 border-y border-r border-slate-200 dark:border-slate-805 space-y-4 shadow-sm">
+      <div className="border-b border-blue-200/30 dark:border-slate-800 pb-3">
+        <h3 className="font-extrabold text-slate-900 dark:text-white uppercase text-xs tracking-wider font-mono flex items-center gap-2">
+          <BookOpen className="h-4.5 w-4.5 text-blue-600 dark:text-blue-400" />
+          Laporan Detail Hasil Asesmen SMP
+        </h3>
+        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+          Analisis deskriptif komprehensif dari potensi kognitif kesiswaan, asimilasi gaya belajar, dan kekuatan minat bakat kesiswaan.
+        </p>
+      </div>
+
+      <div className="space-y-4.5">
+        {/* Aspek 1: Potensi Kapasitas Kognitif */}
+        <div className="space-y-1.5">
+          <div className="flex justify-between items-center">
+            <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest font-mono">
+              1. Potensi Kapasitas Kognitif
+            </span>
+            <span className="text-[10px] font-mono bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-bold">
+              IQ: {iqVal}
+            </span>
+          </div>
+          <div className="p-3 bg-white dark:bg-slate-900/60 rounded-xl border border-slate-100 dark:border-slate-850 text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-sans">
+            Berdasarkan simulasi pengujian kognitif standard, kemampuan nalar kognitif Anda berada di level <strong className="text-slate-900 dark:text-white">{iqVal}</strong> dengan klasifikasi kecerdasan <strong className="text-blue-650 dark:text-blue-400 font-bold">{getIqClass(iqVal)} ({iqVal})</strong>. Hal ini menunjukkan kekuatan yang prima dalam hal pengenalan pola logis, penalaran verbal-numerikal, dan pemecahan ketangkasan penalaran induktif kritis di jenjang menengah pertama.
+          </div>
+        </div>
+
+        {/* Aspek 2: Gaya Belajar Pembelajaran */}
+        <div className="space-y-1.5">
+          <div className="flex justify-between items-center">
+            <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest font-mono">
+              2. Asimilasi Gaya Belajar Dominan
+            </span>
+            <span className="text-[10px] font-mono bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded font-bold">
+              {topGayaBelajar?.percentage > 0 ? topGayaBelajar.label.split(" ")[0] : "Menunggu Tes"}
+            </span>
+          </div>
+          <div className="p-3 bg-white dark:bg-slate-900/60 rounded-xl border border-slate-100 dark:border-slate-850 text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-sans">
+            {gayaBelajar?.completed ? (
+              <span>
+                Modalitas kognitif dominan Anda dalam memproses informasi baru terdeteksi sebagai tipe <strong className="text-purple-650 dark:text-purple-400 font-bold">{topGayaBelajar.label}</strong> dengan tingkat keselarasan <strong className="text-slate-900 dark:text-white">{topGayaBelajar.percentage}%</strong>. Memanfaatkan media pembelajaran yang relevan dengan metode ini di asrama akan secara drastis menghebatkan daya serap memori jangka panjang Anda.
+              </span>
+            ) : (
+              <span className="text-gray-400 italic">Silakan lengkapi instrumen Kuis Gaya Belajar (VAK) di dashboard untuk menampilkan detail karakteristik dan strategi stimulasi belajar visual/auditori/kinestetik Anda.</span>
+            )}
+          </div>
+        </div>
+
+        {/* Aspek 3: Pilar Bakat Ekskul & Minat Kesiswaan */}
+        <div className="space-y-1.5">
+          <div className="flex justify-between items-center">
+            <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest font-mono">
+              3. Penelusuran Bakat & Minat Ekstrakurikuler
+            </span>
+            <span className="text-[10px] font-mono bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded font-bold">
+              {prestasiEkskul?.smpCompleted ? topBakat.label : "Menunggu Tes"}
+            </span>
+          </div>
+          <div className="p-3 bg-white dark:bg-slate-900/60 rounded-xl border border-slate-100 dark:border-slate-850 text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-sans">
+            {prestasiEkskul?.smpCompleted ? (
+              <span>
+                Orientasi ketertarikan minat bakat kesiswaan non-akademik Anda mengarah kuat pada rumpun <strong className="text-emerald-650 dark:text-emerald-400 font-bold">{topBakat.label}</strong>. Penyaluran minat ini ke dalam program ekstrakurikuler asrama Sekolah Cendekia BAZNAS akan secara optimal mengasah kecerdasan interpersonal, kepribadian adaptif, serta ketangguhan kepemimpinan Islami Anda.
+              </span>
+            ) : (
+              <span className="text-gray-400 italic">Silakan tuntaskan pilihan asimilasi minat kesiswaan Anda di menu Bakat & Ekskul untuk menampilkan rekomendasi bimbingan kecakapan kesiswaan Anda secara utuh.</span>
+            )}
+          </div>
+        </div>
+
+        {/* Aspek 4: Evaluasi Kepribadian Terpadu */}
+        <div className="p-3.5 bg-indigo-50/50 dark:bg-slate-950/40 border border-indigo-150/40 dark:border-slate-850 rounded-xl">
+          <h4 className="text-[11px] font-bold text-indigo-950 dark:text-indigo-300 flex items-center gap-1.5 mb-1 text-xs">
+            <Award className="h-4 w-4 text-indigo-500" />
+            Kesimpulan & Rekomendasi Konseling Bk
+          </h4>
+          <p className="text-[11px] text-indigo-905 dark:text-slate-300 leading-relaxed font-sans">
+            {gayaBelajar?.completed && prestasiEkskul?.smpCompleted && iqVal >= 110 ? (
+              "Siswa memegang modalitas belajar serta kesiapan kognitif kesiswaan di level unggul. Sinergi antara model asimilasi asrama harian dan eksplorasi bakat berdasar minat aktif akan membentuk ketahanan belajar mandiri yang stabil dan berkarakter mulia."
+            ) : (
+              "Siswa disarankan untuk berdiskusi secara berkala dengan jajaran guru BK asrama guna mensinkronkan modalitas aktivitas harian dengan gaya belajar kognitif yang paling menyenangkan."
+            )}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 8. SmpExtracurricularAndStrategy: High-fidelity visual recommendation engine for SMP Extra-curriculars and Study style tactics
+export function SmpExtracurricularAndStrategy({ appState, onNavigate }: ComponentProps) {
+  // A. EXTRACURRICULAR RECOGNITION
+  const smpAnswers = appState.prestasiEkskul?.smpAnswers || {};
+  const smpCompleted = appState.prestasiEkskul?.smpCompleted || false;
+
+  const scores = { ScienceTech: 0, Sports: 0, Leadership: 0, ArtsMusic: 0 };
+  Object.values(smpAnswers).forEach((optionId) => {
+    if (optionId === 1) scores.ScienceTech++;
+    else if (optionId === 2) scores.Sports++;
+    else if (optionId === 3) scores.Leadership++;
+    else if (optionId === 4) scores.ArtsMusic++;
+  });
+
+  const domains = [
+    { 
+      key: "ScienceTech", 
+      name: "Sains & Teknologi (MIPA)", 
+      ekskul: "Karya Ilmiah Remaja (KIR) & Club Robotika", 
+      desc: "Dirancang untuk siswa yang gemar berpikir kritis, memecahkan masalah logis, menganalisis data, serta tertarik dengan rakitan mesin otomatis.",
+      color: "border-blue-200 dark:border-blue-900/30 bg-blue-50/30 dark:bg-blue-950/10",
+      accent: "text-blue-600 dark:text-blue-400",
+      label: "SAINS & TEKNOLOGI"
+    },
+    { 
+      key: "Sports", 
+      name: "Ketangkasan Jasmani & Olahraga", 
+      ekskul: "Futsal, Basket, Pencak Silat, atau Petanque", 
+      desc: "Dirancang untuk menyalurkan energi kinetik motorik, membangun taktik koordinasi tim, sportivitas tanding pesahabatan, dan ketahanan fisik.",
+      color: "border-amber-200 dark:border-amber-900/30 bg-amber-50/30 dark:bg-amber-950/10",
+      accent: "text-amber-600 dark:text-amber-400",
+      label: "OLAHRAGA PRESTASI"
+    },
+    { 
+      key: "Leadership", 
+      name: "Kepanduan, Kepemimpinan & Organisasi", 
+      ekskul: "Pramuka Garuda, Paskibraka SCB, atau PMR", 
+      desc: "Dirancang untuk mengasah kepemimpinan organisasi, kedisiplinan baris-berbaris (PBB), kemandirian berkemah, serta jiwa kerelawanan kesehatan sosial.",
+      color: "border-emerald-200 dark:border-emerald-900/30 bg-emerald-50/30 dark:bg-emerald-950/10",
+      accent: "text-emerald-600 dark:text-emerald-400",
+      label: "GAYA KEPEMIMPINAN"
+    },
+    { 
+      key: "ArtsMusic", 
+      name: "Seni Estetika & Ekspresi Kreatif", 
+      ekskul: "Seni Kaligrafi Islami, Musik Akustik, atau Hadroh", 
+      desc: "Dirancang untuk menggali sensitivitas estetis, menyalurkan bakat seni musik, keterampilan kriya rupa, dan vokal nada syiar keagamaan.",
+      color: "border-purple-200 dark:border-purple-900/30 bg-purple-50/30 dark:bg-purple-950/10",
+      accent: "text-purple-600 dark:text-purple-400",
+      label: "SENI KREATIF"
+    }
+  ];
+
+  // Sort by scores descending
+  const sortedDomains = [...domains].sort((a, b) => {
+    const scoreA = scores[a.key as keyof typeof scores] || 0;
+    const scoreB = scores[b.key as keyof typeof scores] || 0;
+    return scoreB - scoreA;
+  });
+
+  const topDomain = sortedDomains[0];
+
+  // B. STUDY STRATEGY RECOGNITION
+  const gbAnswers = appState.gayaBelajar?.answers || {};
+  const vaScores = { V: 0, A: 0, K: 0 };
+  Object.entries(gbAnswers).forEach(([qIdStr, rating]) => {
+    const qId = parseInt(qIdStr);
+    const val = typeof rating === "number" ? rating : 0;
+    if (qId >= 1 && qId <= 10) vaScores.V += val;
+    else if (qId >= 11 && qId <= 20) vaScores.A += val;
+    else if (qId >= 21 && qId <= 30) vaScores.K += val;
+  });
+
+  const totalGbAnswered = Object.keys(gbAnswers).length;
+
+  let dominantGbKey: "V" | "A" | "K" = "V";
+  if (vaScores.A > vaScores.V && vaScores.A > vaScores.K) dominantGbKey = "A";
+  else if (vaScores.K > vaScores.V && vaScores.K > vaScores.A) dominantGbKey = "K";
+
+  const gbMeta = {
+    V: {
+      title: "Gaya Belajar Visual",
+      desc: "Anda menyerap pengetahuan secara maksimal melalui informasi visual, pola warna, visualisai spasial diagram, dan catatan rapi berpigmen.",
+      tips: [
+        "Gambar Konsep (Peta Pikiran): Buat skema jaring-jaring bercabang serta lambang ilustrasi cerdas untuk bab-bab IPA terpadu (biologi/fisika) di kamar asrama.",
+        "Catatan Berwarna-warni: Susun intisari hafalan menggunakan kode warna pulpen atau highlighter stabilo berbeda berdasarkan tingkat kepentingannya.",
+        "Duduk di Barisan Depan: Amankan kursi depan di kelas agar pandangan ke papan tulis selalu terbebas dari halangan gerakan siswa lain."
+      ],
+      color: "border-teal-200 dark:border-teal-900/30 bg-teal-50/20 dark:bg-teal-950/10",
+      accent: "text-teal-600 dark:text-teal-400"
+    },
+    A: {
+      title: "Gaya Belajar Auditori",
+      desc: "Anda menyerap pelajaran secara efisien melalui indra pendengaran, penjelasan lisan berulang, alunan nada instrumen, dan diskusi interaktif.",
+      tips: [
+        "Metode Merekam Suara: Rekam bait-bait hafalan hadits atau kosakata bahasa Arab di gawai, lalu dengarkan berulang saat perjalanan atau waktu luang asrama.",
+        "Belajar Bergantian (Peer Tutoring): Diskusikan atau paparkan kembali konsep pelajaran IPS secara lisan kepada teman satu asrama/wisma.",
+        "Verbalisasi Hafalan: Setiap kali menghafal rangkuman, bacalah secara bersuara pelan untuk memicu stimuli indra pendengaran Anda sendiri."
+      ],
+      color: "border-indigo-200 dark:border-indigo-900/30 bg-indigo-50/20 dark:bg-indigo-950/10",
+      accent: "text-indigo-600 dark:text-indigo-400"
+    },
+    K: {
+      title: "Gaya Belajar Kinestetik",
+      desc: "Anda sangat menikmati aktivitas belajar praktis yang menggerakkan tubuh, peragaan gestur fisik, percobaan mandiri, atau belajar sambil bergerak santai.",
+      tips: [
+        "Metode Belajar Pomodoro Aktif: Gabungkan 25 menit fokus penuh membaca dengan jeda 5 menit bergerak aktif (sedikit peregangan otot atau jalan santai di lorong asrama).",
+        "Gunakan Gerakan Isyarat Tangan: Gunakan isyarat hitungan jari, ketukan meja ringan, atau gerak gestur ketika menghafal asmaul husna/hadits kesiswaan.",
+        "Mencoba & Mempraktikkan Langsung: Terlibat aktif di kegiatan praktikum asrama, memegang replika obyek, sains eksperimental, atau pemetaan lapangan langsung."
+      ],
+      color: "border-amber-200 dark:border-amber-900/30 bg-amber-50/20 dark:bg-amber-955/10",
+      accent: "text-amber-600 dark:text-amber-400"
+    }
+  };
+
+  const topGb = gbMeta[dominantGbKey];
+
+  return (
+    <div className="space-y-6">
+      {/* 1. SECTION REKOMENDASI EKSTRAKURIKULER */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4 shadow-sm">
+        <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div>
+            <h3 className="font-extrabold text-slate-900 dark:text-white uppercase text-xs tracking-wider font-mono flex items-center gap-1.5">
+              <Sparkles className="h-4.5 w-4.5 text-amber-500" />
+              Rekomendasi Utama Ekstrakurikuler SMP
+            </h3>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+              Berdasarkan hasil Kuis Diagnostic Minat & Bakat Ekstrakurikuler SCB.
+            </p>
+          </div>
+          <button
+            onClick={() => onNavigate(4)}
+            className="text-[10px] font-bold text-blue-650 dark:text-blue-450 hover:underline uppercase tracking-wider font-mono cursor-pointer"
+          >
+            Tes Diagnostik
+          </button>
+        </div>
+
+        {!smpCompleted && (
+          <div className="text-[10px] text-amber-600 dark:text-amber-450 bg-amber-50 dark:bg-amber-950/20 p-2.5 rounded-xl border border-amber-100 dark:border-amber-905 italic leading-relaxed">
+            *Kuis Diagnostik Minat di Menu "Ekskul & Bakat" belum selesai dikerjakan secara utuh. Lakukan pengisian lengkap untuk hasil presisi. Untuk sementara, berikut kecenderungan Anda:
+          </div>
+        )}
+
+        <div className={`p-4 border rounded-2xl ${topDomain.color} space-y-2.5 transition-all`}>
+          <div className="flex justify-between items-start gap-2">
+            <span className="text-[9px] font-mono tracking-wider font-extrabold bg-white dark:bg-slate-950 text-slate-650 dark:text-slate-350 px-2.5 py-0.5 rounded border border-slate-150/40 dark:border-slate-850 uppercase">
+              {topDomain.label}
+            </span>
+            <span className="text-[10px] font-mono font-bold text-slate-500">
+              Kecocokan: {smpCompleted ? "Sangat Tinggi" : "Indikasi Awal"}
+            </span>
+          </div>
+
+          <div>
+            <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">
+              {topDomain.name}
+            </h4>
+            <div className="text-[10px] font-bold text-emerald-650 dark:text-emerald-400 mt-0.5 uppercase tracking-wide font-mono">
+              Ekskul Utama: {topDomain.ekskul}
+            </div>
+          </div>
+
+          <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed leading-5">
+            {topDomain.desc}
+          </p>
+        </div>
+
+        {/* Alternatives of domains */}
+        <div className="space-y-2">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono block">
+            Jajaran Alternatif Lain
+          </span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {sortedDomains.slice(1, 4).map((d, index) => {
+              const score = scores[d.key as keyof typeof scores] || 0;
+              return (
+                <div key={index} className="p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 rounded-xl flex flex-col justify-between">
+                  <div>
+                    <h5 className="text-[10px] font-extrabold text-slate-850 dark:text-slate-205 line-clamp-1">{d.name}</h5>
+                    <p className="text-[9px] text-slate-500 leading-tight mt-1 line-clamp-2">{d.ekskul}</p>
+                  </div>
+                  <span className="text-[8px] font-mono font-semibold text-slate-400 mt-1 uppercase">Prioritas {index + 2}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* 2. SECTION STRATEGI BELAJAR MANDIRI */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4 shadow-sm">
+        <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div>
+            <h3 className="font-extrabold text-slate-900 dark:text-white uppercase text-xs tracking-wider font-mono flex items-center gap-1.5">
+              <Award className="h-4.5 w-4.5 text-blue-500" />
+              Saran Taktis Strategi Belajar
+            </h3>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+              Diformulasikan dari kuis diagnostik kognitif Gaya Belajar VAK.
+            </p>
+          </div>
+          <button
+            onClick={() => onNavigate(11)}
+            className="text-[10px] font-bold text-blue-650 dark:text-blue-450 hover:underline uppercase tracking-wider font-mono cursor-pointer"
+          >
+            Tes Gaya Belajar
+          </button>
+        </div>
+
+        {totalGbAnswered === 0 && (
+          <div className="text-[10px] text-blue-600 dark:text-blue-450 bg-blue-50 dark:bg-blue-950/20 p-2.5 rounded-xl border border-blue-100 dark:border-blue-905 italic leading-relaxed">
+            *Kuis Gaya Belajar di Menu "Gaya Belajar" belum dikerjakan. Selesaikan kuis untuk tips belajar terkurasi visual, auditori, atau kinestetik secara instan.
+          </div>
+        )}
+
+        <div className={`p-4 border rounded-2xl ${topGb.color} space-y-3`}>
+          <div>
+            <span className="text-[9px] font-mono tracking-wider font-extrabold bg-white dark:bg-slate-950 text-slate-650 dark:text-slate-350 px-2 py-0.5 rounded border border-slate-150/40 dark:border-slate-850 uppercase">
+              REKOMENDASI METODE UTAMA
+            </span>
+            <h4 className="font-extrabold text-sm text-slate-900 dark:text-white mt-1.5">
+              {topGb.title}
+            </h4>
+            <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed leading-5">
+              {topGb.desc}
+            </p>
+          </div>
+
+          <div className="space-y-2 border-t border-slate-200/50 dark:border-slate-800/50 pt-2.5">
+            {topGb.tips.map((tip, i) => {
+              const [header, body] = tip.split(": ");
+              return (
+                <div key={i} className="flex gap-2 items-start text-xs leading-relaxed">
+                  <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-mono text-[10px] font-semibold flex items-center justify-center shrink-0 mt-0.5">
+                    {i + 1}
+                  </span>
+                  <div>
+                    <strong className="text-slate-850 dark:text-slate-100">{body ? header : `Tips ${i + 1}`} : </strong>
+                    <span className="text-slate-600 dark:text-slate-350">{body || header}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <p className="text-[10px] text-slate-450 italic leading-snug">
+          *Setiap santri memiliki adaptasi kognitif berbeda. Lakukan perpaduan taktis jika Anda merasa memiliki kecenderungan gaya belajar campuran.
+        </p>
+      </div>
+    </div>
+  );
+}
+

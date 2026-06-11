@@ -27,9 +27,10 @@ const DEFAULT_RECORDS: CompletedTestRecord[] = [];
 interface RekapHasilSiswaProps {
   appState: FullAppState;
   isAdmin?: boolean;
+  userRole?: "peserta" | "admin" | "bk_smp" | "bk_sma" | null;
 }
 
-export default function RekapHasilSiswa({ appState, isAdmin }: RekapHasilSiswaProps) {
+export default function RekapHasilSiswa({ appState, isAdmin, userRole }: RekapHasilSiswaProps) {
   const [records, setRecords] = useState<CompletedTestRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [classFilter, setClassFilter] = useState("All");
@@ -45,8 +46,18 @@ export default function RekapHasilSiswa({ appState, isAdmin }: RekapHasilSiswaPr
         const parsed = JSON.parse(stored) as CompletedTestRecord[];
         // Filter out any older mock/dummy records that are not explicitly user-added
         const cleaned = parsed.filter(r => r.isUserAdded === true);
-        setRecords(cleaned);
+        
+        // Save cleaned back to local storage (keep absolute database intact)
         localStorage.setItem("sipetakuliah_cohort_recap", JSON.stringify(cleaned));
+
+        // Filter local state based on roles
+        let filtered = cleaned;
+        if (userRole === "bk_smp") {
+          filtered = cleaned.filter(st => st.kelas && (st.kelas.includes("7") || st.kelas.includes("8") || st.kelas.includes("9") || st.kelas.toLowerCase().includes("smp")));
+        } else if (userRole === "bk_sma") {
+          filtered = cleaned.filter(st => st.kelas && (st.kelas.includes("10") || st.kelas.includes("11") || st.kelas.includes("12") || st.kelas.toLowerCase().includes("sma") || st.kelas.toLowerCase().includes("ma")));
+        }
+        setRecords(filtered);
       } catch (e) {
         setRecords(DEFAULT_RECORDS);
       }
@@ -54,7 +65,7 @@ export default function RekapHasilSiswa({ appState, isAdmin }: RekapHasilSiswaPr
       setRecords(DEFAULT_RECORDS);
       localStorage.setItem("sipetakuliah_cohort_recap", JSON.stringify(DEFAULT_RECORDS));
     }
-  }, []);
+  }, [userRole]);
 
   // Check if current user has already been saved
   const isCurrentUserSaved = records.some(r => r.nisn === appState.profile.nisn && r.nisn !== "");
@@ -160,10 +171,26 @@ export default function RekapHasilSiswa({ appState, isAdmin }: RekapHasilSiswaPr
       isUserAdded: true
     };
 
-    // Filter out duplicates with same NISN/Name if they already exist
-    const updated = [newRecord, ...records.filter(r => r.nisn !== newRecord.nisn && r.nama !== newRecord.nama)];
-    setRecords(updated);
-    localStorage.setItem("sipetakuliah_cohort_recap", JSON.stringify(updated));
+    // Load full list to inject this without destroying out-of-scope student levels
+    const rawStored = localStorage.getItem("sipetakuliah_cohort_recap");
+    let fullList: CompletedTestRecord[] = [];
+    if (rawStored) {
+      try {
+        fullList = JSON.parse(rawStored) as CompletedTestRecord[];
+      } catch (e) {}
+    }
+    const updatedFull = [newRecord, ...fullList.filter(r => r.nisn !== newRecord.nisn && r.nama !== newRecord.nama)];
+    localStorage.setItem("sipetakuliah_cohort_recap", JSON.stringify(updatedFull));
+
+    // Refilter local state based on roles
+    let filtered = updatedFull;
+    if (userRole === "bk_smp") {
+      filtered = updatedFull.filter(st => st.kelas && (st.kelas.includes("7") || st.kelas.includes("8") || st.kelas.includes("9") || st.kelas.toLowerCase().includes("smp")));
+    } else if (userRole === "bk_sma") {
+      filtered = updatedFull.filter(st => st.kelas && (st.kelas.includes("10") || st.kelas.includes("11") || st.kelas.includes("12") || st.kelas.toLowerCase().includes("sma") || st.kelas.toLowerCase().includes("ma")));
+    }
+    setRecords(filtered);
+
     setSavedSuccessAlert(true);
     setTimeout(() => setSavedSuccessAlert(false), 4000);
   };
@@ -282,6 +309,8 @@ export default function RekapHasilSiswa({ appState, isAdmin }: RekapHasilSiswaPr
       return sortOrder === "asc" ? comparison : -comparison;
     });
 
+  const isSmp = userRole === "bk_smp" || appState.jenjang === "SMP" || (filteredRecords.length > 0 && filteredRecords.every(rec => rec.kelas.includes("7") || rec.kelas.includes("8") || rec.kelas.includes("9") || rec.kelas.toLowerCase().includes("smp")));
+
   // Extract classes for filter list
   const classes = [
     "All", 
@@ -347,7 +376,7 @@ export default function RekapHasilSiswa({ appState, isAdmin }: RekapHasilSiswaPr
             Database Rekapan Hasil Siswa
           </div>
           <h3 className="text-xl font-extrabold text-gray-900 dark:text-white">
-            Rekap Kolektif Peserta & Rekomendasi Jurusan
+            {isSmp ? "Rekap Kolektif Peserta & Fokus Pengembangan Diri" : "Rekap Kolektif Peserta & Rekomendasi Jurusan"}
           </h3>
           <p className="text-xs text-gray-500 dark:text-gray-400">
             Daftar siswa angkatan Sekolah Cendekia BAZNAS yang telah berpartisipasi dan melengkapi instrumen asesmen karir kognitif.
@@ -389,18 +418,20 @@ export default function RekapHasilSiswa({ appState, isAdmin }: RekapHasilSiswaPr
             <span>Cetak PDF</span>
           </button>
 
-          <button
-            onClick={handleResetRecords}
-            className="px-3.5 py-2 border border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-850 hover:text-red-500 rounded-xl text-xs font-bold transition-all cursor-pointer no-print"
-            title="Kembalikan ke data awal"
-          >
-            Reset
-          </button>
+          {userRole === "admin" && (
+            <button
+              onClick={handleResetRecords}
+              className="px-3.5 py-2 border border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-850 hover:text-red-500 rounded-xl text-xs font-bold transition-all cursor-pointer no-print"
+              title="Kembalikan ke data awal"
+            >
+              Reset
+            </button>
+          )}
 
-          {isAdmin && (
+          {userRole === "admin" && (
             <button
               onClick={handleClearAllRecords}
-              className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer no-print"
+              className="px-3 py-2 bg-red-650 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer no-print"
               title="MENGHAPUS SEMUA DATA PESERTA"
             >
               <Trash2 className="h-4 w-4" /> Hapus Semua
@@ -425,7 +456,7 @@ export default function RekapHasilSiswa({ appState, isAdmin }: RekapHasilSiswaPr
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Cari siswa, NISN, atau jurusan..."
+            placeholder={isSmp ? "Cari siswa, NISN, atau fokus pengembangan..." : "Cari siswa, NISN, atau jurusan..."}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 text-xs bg-slate-50/50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl focus:ring-1 focus:ring-blue-500 focus:outline-none text-gray-900 dark:text-white"
@@ -473,8 +504,8 @@ export default function RekapHasilSiswa({ appState, isAdmin }: RekapHasilSiswaPr
                   <ArrowUpDown className="h-3 w-3 no-print" />
                 </div>
               </th>
-              <th className="p-4">Kode Holland RIASEC</th>
-              <th className="p-4">Rekomendasi Utama BK</th>
+              <th className="p-4">{isSmp ? "Gaya Belajar (VAK)" : "Kode Holland RIASEC"}</th>
+              <th className="p-4">{isSmp ? "Rekomendasi Utama (Studi/Ekskul)" : "Rekomendasi Utama BK"}</th>
               <th className="p-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors" onClick={() => handleSort("tanggalTes")}>
                 <div className="flex items-center gap-1">
                   Tanggal Input
@@ -512,9 +543,10 @@ export default function RekapHasilSiswa({ appState, isAdmin }: RekapHasilSiswaPr
                     <div className="text-[10px] text-slate-500 font-mono">
                       NISN: {rec.nisn} • <span className="font-bold text-blue-600 dark:text-blue-400">{rec.kelas}</span>
                     </div>
-                  </td>                   {/* GPA Average */}
+                  </td>
+                  {/* GPA Average */}
                   <td className="p-4 font-mono font-bold text-slate-800 dark:text-slate-350">
-                    {rec.kelas.includes("Kelas 7") || rec.kelas.includes("Kelas 8") || rec.kelas.includes("Kelas 9") ? (
+                    {(rec.kelas.includes("7") || rec.kelas.includes("8") || rec.kelas.includes("9") || rec.kelas.toLowerCase().includes("smp")) ? (
                       <span className="text-gray-400 font-sans font-normal text-xs">-</span>
                     ) : (
                       <div className="flex items-center gap-2">
@@ -537,10 +569,10 @@ export default function RekapHasilSiswa({ appState, isAdmin }: RekapHasilSiswaPr
 
                   {/* RIASEC Dominant Type / Gaya Belajar */}
                   <td className="p-4 space-y-1 max-w-[170px]">
-                    {rec.kelas.includes("Kelas 7") || rec.kelas.includes("Kelas 8") || rec.kelas.includes("Kelas 9") ? (
+                    {(rec.kelas.includes("7") || rec.kelas.includes("8") || rec.kelas.includes("9") || rec.kelas.toLowerCase().includes("smp")) ? (
                       <>
                         <div className="flex items-center gap-1 text-[10px]">
-                          <Compass className="h-3.5 w-3.5 text-purple-655 shrink-0 animate-spin-slow" />
+                           <Compass className="h-3.5 w-3.5 text-purple-655 shrink-0 animate-spin-slow" />
                           <span className="font-bold text-gray-700 dark:text-gray-300">Gaya Belajar:</span>
                         </div>
                         <div className="flex flex-wrap gap-1">
@@ -589,14 +621,24 @@ export default function RekapHasilSiswa({ appState, isAdmin }: RekapHasilSiswaPr
                   </td>
 
                   {/* Actions (Delete only custom userAdded items for safety, or all if Admin) */}
-                  <td className="p-4 text-center no-print">
-                    {(rec.isUserAdded || isAdmin) ? (
+                  <td className="p-4 text-center no-print col-span-1">
+                    {(userRole === "admin") ? (
                       <button
                         onClick={() => {
                           if (confirm(`Hapus data rekapan untuk ${rec.nama}?`)) {
-                            const updated = records.filter(r => r.id !== rec.id);
-                            setRecords(updated);
-                            localStorage.setItem("sipetakuliah_cohort_recap", JSON.stringify(updated));
+                            // Fetch full list to filter and update faithfully
+                            const rawStored = localStorage.getItem("sipetakuliah_cohort_recap");
+                            let fullList: CompletedTestRecord[] = [];
+                            if (rawStored) {
+                              try {
+                                fullList = JSON.parse(rawStored) as CompletedTestRecord[];
+                              } catch (e) {}
+                            }
+                            const updatedFull = fullList.filter(r => r.id !== rec.id);
+                            localStorage.setItem("sipetakuliah_cohort_recap", JSON.stringify(updatedFull));
+
+                            // Update local filtered state
+                            setRecords(updatedFull);
                           }
                         }}
                         className="p-1 px-2 border border-red-250 dark:border-red-900 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 text-red-650 rounded-lg text-[10px] font-bold cursor-pointer transition-all inline-flex items-center gap-1 font-mono"
