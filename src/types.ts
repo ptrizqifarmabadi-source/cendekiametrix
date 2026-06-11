@@ -54,6 +54,8 @@ export interface PrestasiEkskulState {
     nasional: number;
     internasional: number;
   };
+  smpAnswers?: Record<number, number>; // questionId (1-12) -> chosenOptionIndex (1-4)
+  smpCompleted?: boolean;
 }
 
 export interface MinatBakatState {

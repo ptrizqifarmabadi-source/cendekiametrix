@@ -16,7 +16,9 @@ import {
   BrainCircuit,
   ChevronLeft,
   ChevronRight,
-  Users
+  Users,
+  Trophy,
+  Sparkles
 } from "lucide-react";
 import RekapHasilSiswa from "./RekapHasilSiswa";
 
@@ -95,6 +97,13 @@ export default function LaporanAkhir({ appState, isAdmin }: LaporanAkhirProps) {
         : "Rekomendasi program studi utama yang sangat selaras dengan dimensi kecerdasan IQ dan Holland Code."
     }))
   } : aiRecommendation;
+
+  const currentPrestasiEkskul = selectedStudent ? {
+    ekskul: selectedStudent.ekskul || [],
+    tingkatPrestasi: { sekolah: 0, kabupaten: 0, provinsi: 0, nasional: 0, internasional: 0 },
+    smpAnswers: selectedStudent.smpAnswers || {},
+    smpCompleted: selectedStudent.smpCompleted || false
+  } : prestasiEkskul;
 
   // Math re-calculations
   const getSubStats = () => {
@@ -512,6 +521,117 @@ export default function LaporanAkhir({ appState, isAdmin }: LaporanAkhirProps) {
             </div>
           )}
         </div>
+
+        {/* 3b. SMP Extracurricular Talent & Interest Diagnostics Results */}
+        {isSmp && (
+          <div className="bg-white dark:bg-gray-950 p-5 rounded-xl border border-gray-150 dark:border-gray-850 space-y-3">
+            <div className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider font-mono flex items-center gap-1.5 border-b border-gray-105 pb-2">
+              <Trophy className="h-4.5 w-4.5 text-blue-600" />
+              Hasil Pemetaan Tes Diagnostik Bakat Kesiswaan & Minat Ekskul (SMP Assessed)
+            </div>
+
+            {/* Calculate and render SMP domain matches directly from current profile's prestasiEkskul */}
+            {(() => {
+              const smpAnswers = currentPrestasiEkskul?.smpAnswers || {};
+              const smpCompleted = currentPrestasiEkskul?.smpCompleted || false;
+
+              if (!smpCompleted || Object.keys(smpAnswers).length === 0) {
+                return (
+                  <p className="text-xs italic text-gray-450 text-center py-2">
+                    Data tes diagnostik bakat-ekskul kosong atau belum diselesaikan di Tab Bakat & Prestasi kesiswaan.
+                  </p>
+                );
+              }
+
+              // Run calculations inline
+              const scores = { ScienceTech: 0, Sports: 0, Leadership: 0, ArtsMusic: 0 };
+              const totalQ = Object.keys(smpAnswers).length;
+
+              const SMP_DIAGNOSTIC_METADATA = {
+                ScienceTech: { name: "Sains & Teknologi", desc: "Riset Sains Eksakta, Matematika Terapan, Robotika, dan Pemrograman Cerdas", color: "bg-blue-550" },
+                Sports: { name: "Olahraga & Fisik", desc: "Ketangkasan Panahan, Futsal, Basket, Silat, dan Bola Besi Petanque", color: "bg-emerald-550" },
+                Leadership: { name: "Kepemimpinan & Sosial", desc: "Baris Berbaris Bela Negara Paskibra, PMR Sukarelawan Medis, dan Pramuka Inti", color: "bg-purple-550" },
+                ArtsMusic: { name: "Seni Kreatif & Musik", desc: "Cipta Kriya Rupa Estetik, Kaligrafi Islami, dan Harmonika Musik Hadroh kesiswaan", color: "bg-rose-550" }
+              };
+
+              // Re-run mapping
+              const mappings = {
+                1: { 1: "ScienceTech", 2: "Sports", 3: "Leadership", 4: "ArtsMusic" },
+                2: { 1: "ScienceTech", 2: "Sports", 3: "Leadership", 4: "ArtsMusic" },
+                3: { 1: "ScienceTech", 2: "Sports", 3: "Leadership", 4: "ArtsMusic" },
+                4: { 1: "ScienceTech", 2: "Sports", 3: "Leadership", 4: "ArtsMusic" },
+                5: { 1: "ScienceTech", 2: "Sports", 3: "Leadership", 4: "ArtsMusic" },
+                6: { 1: "ScienceTech", 2: "Sports", 3: "Leadership", 4: "ArtsMusic" },
+                7: { 1: "ScienceTech", 2: "Sports", 3: "Leadership", 4: "ArtsMusic" },
+                8: { 1: "ScienceTech", 2: "Sports", 3: "Leadership", 4: "ArtsMusic" },
+                9: { 1: "ScienceTech", 2: "Sports", 3: "Leadership", 4: "ArtsMusic" },
+                10: { 1: "ScienceTech", 2: "Sports", 3: "Leadership", 4: "ArtsMusic" },
+                11: { 1: "ScienceTech", 2: "Sports", 3: "Leadership", 4: "ArtsMusic" },
+                12: { 1: "ScienceTech", 2: "Sports", 3: "Leadership", 4: "ArtsMusic" }
+              };
+
+              Object.entries(smpAnswers).forEach(([qIdStr, optIdVal]) => {
+                const qId = parseInt(qIdStr) as keyof typeof mappings;
+                const optId = optIdVal as number;
+                if (mappings[qId]) {
+                  const domain = mappings[qId][optId as 1 | 2 | 3 | 4];
+                  if (domain) {
+                    scores[domain as keyof typeof scores]++;
+                  }
+                }
+              });
+
+              const divisor = totalQ || 12;
+              const formattedResults = (Object.keys(scores) as (keyof typeof scores)[]).map(key => ({
+                key,
+                percentage: Math.round((scores[key] / divisor) * 100),
+                rawScore: scores[key],
+                ...SMP_DIAGNOSTIC_METADATA[key]
+              })).sort((a, b) => b.percentage - a.percentage);
+
+              return (
+                <div className="space-y-3.5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 print:grid-cols-2">
+                    {formattedResults.map((item, idx) => (
+                      <div key={item.key} className="p-3 bg-gray-50/50 dark:bg-gray-900 border border-gray-150 dark:border-gray-850 rounded-xl flex flex-col justify-between">
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center text-[10px] font-mono tracking-wider font-bold">
+                            <span className="text-gray-450 uppercase">{idx === 0 ? "RUMPUN DOMINAN UTAMA" : `RUMPUN MINAT ${idx + 1}`}</span>
+                            <span className="text-blue-600 font-extrabold">{item.percentage}% MATCH</span>
+                          </div>
+                          <h5 className="font-extrabold text-xs text-gray-900 dark:text-white mt-1 uppercase">{item.name}</h5>
+                          <p className="text-[10px] text-gray-550 leading-relaxed font-sans">{item.desc}</p>
+                        </div>
+                        {/* Horizontal matches bar */}
+                        <div className="w-full bg-gray-200 dark:bg-gray-800 h-1.5 rounded-full mt-2.5 overflow-hidden">
+                          <div className={`${item.key === "ScienceTech" ? "bg-blue-600" : item.key === "Sports" ? "bg-emerald-600" : item.key === "Leadership" ? "bg-purple-600" : "bg-rose-600"} h-full`} style={{ width: `${item.percentage}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="bg-blue-50/40 dark:bg-blue-950/20 px-3.5 py-3 border border-blue-105/40 rounded-xl flex items-center justify-between text-[11px] text-blue-800 dark:text-blue-300">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 shrink-0" />
+                      <div>
+                        <span className="font-bold">Ekskul Rekomendasi Unggulan:</span>{" "}
+                        <span className="font-semibold text-gray-800 dark:text-gray-100">
+                          {formattedResults[0].key === "ScienceTech" 
+                            ? "Klub Robotika & Pemrograman, Karya Ilmiah Remaja (KIR)" 
+                            : formattedResults[0].key === "Sports" 
+                              ? "Futsal, Basket, Pencak Silat, Petanque" 
+                              : formattedResults[0].key === "Leadership" 
+                                ? "Pramuka Inti, Paskibraka Sekolah, PMR" 
+                                : "Klub Musik & Paduan Suara, Seni Visual/Kriya"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
 
         {/* 4. Top 3 AI Recommendations College Target */}
         <div className="bg-white dark:bg-gray-950 p-5 rounded-xl border border-gray-150 dark:border-gray-850 space-y-4">

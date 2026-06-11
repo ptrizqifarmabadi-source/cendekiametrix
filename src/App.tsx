@@ -913,6 +913,7 @@ export default function App() {
               onChange={(next) => setAppState({ ...appState, prestasiEkskul: next })}
               onNext={() => handleNavigate(appState.jenjang === "SMP" ? 6 : 5)}
               onPrev={() => handleNavigate(appState.jenjang === "SMP" ? 11 : 3)}
+              jenjang={appState.jenjang}
             />
           )}
 
