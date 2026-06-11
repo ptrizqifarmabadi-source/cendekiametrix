@@ -376,9 +376,12 @@ export default function App() {
           
           {/* Logo & Headline */}
           <div className="text-center space-y-3 mb-10">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-650 to-indigo-700 text-white shadow-xl shadow-blue-500/15 text-2xl font-black mb-1 font-mono">
-              C
-            </div>
+            <img 
+              src="https://lh3.googleusercontent.com/d/1ugonzA_1B-ukGoqRRUIQbLK8QPIzo26V" 
+              alt="Sekolah Cendekia BAZNAS Logo" 
+              className="h-16 w-auto object-contain mx-auto mb-1 rounded-xl"
+              referrerPolicy="no-referrer"
+            />
             <div className="space-y-1">
               <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900 dark:text-white font-display">
                 CendekiaMetrix <span className="text-blue-605 dark:text-blue-400">SCB</span>
@@ -678,7 +681,12 @@ export default function App() {
           </button>
           
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20 font-extrabold font-display text-base">C</div>
+            <img 
+              src="https://lh3.googleusercontent.com/d/1ugonzA_1B-ukGoqRRUIQbLK8QPIzo26V" 
+              alt="Sekolah Cendekia BAZNAS Logo" 
+              className="h-8.5 w-auto object-contain shrink-0 rounded-lg shadow-sm"
+              referrerPolicy="no-referrer"
+            />
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-base font-extrabold text-slate-900 dark:text-white leading-tight font-display tracking-tight">CendekiaMetrix</span>
@@ -790,7 +798,12 @@ export default function App() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center bg-transparent border-b border-slate-800 pb-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded bg-blue-600 flex items-center justify-center text-white font-extrabold">P</div>
+                    <img 
+                      src="https://lh3.googleusercontent.com/d/1ugonzA_1B-ukGoqRRUIQbLK8QPIzo26V" 
+                      alt="Sekolah Cendekia BAZNAS Logo" 
+                      className="h-6.5 w-auto object-contain shrink-0 rounded"
+                      referrerPolicy="no-referrer"
+                    />
                     <span className="font-bold text-xs text-white">Menu Navigasi</span>
                   </div>
                   <button onClick={() => setMobileMenuOpen(false)} className="text-slate-400 hover:text-white">
