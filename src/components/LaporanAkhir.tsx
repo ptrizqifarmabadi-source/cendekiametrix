@@ -375,7 +375,7 @@ export default function LaporanAkhir({ appState, isAdmin }: LaporanAkhirProps) {
             Sekolah Cendekia BAZNAS
           </h1>
           <p className="text-xs uppercase tracking-widest text-emerald-650 dark:text-emerald-400 font-mono font-bold leading-5">
-            Sistem Informasi Capaian Asesmen (CendekiaMetrix)
+            Sistem Informasi Capaian Asesmen (Cendekia Metrix)
           </p>
           <div className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">
             Jl. Masjid Baitul Ilmi, Cemplang, Cibungbulang, Bogor, Jawa Barat 16630
@@ -570,9 +570,9 @@ export default function LaporanAkhir({ appState, isAdmin }: LaporanAkhirProps) {
         <strong className="text-gray-900 dark:text-white font-mono block uppercase text-[10px] tracking-wider">Metodologi Akurasi Laporan:</strong>
         <p>
           {isSmp ? (
-            "Transkrip evaluasi dikalkulasi secara otomatis oleh sistem CendekiaMetrix dengan format penimbangan 40% Gaya Belajar VAK, 40% Simulasi IQ kognitif, dan 20% kuantitas penelusuran prestasi & ekstrakurikuler. Cetak PDF ini sebagai lampiran administrasi saat pengajuan evaluasi tatap muka langsung di sekolah bersama jajaran guru pendamping BK Sekolah Cendekia BAZNAS."
+            "Transkrip evaluasi dikalkulasi secara otomatis oleh sistem Cendekia Metrix dengan format penimbangan 40% Gaya Belajar VAK, 40% Simulasi IQ kognitif, dan 20% kuantitas penelusuran prestasi & ekstrakurikuler. Cetak PDF ini sebagai lampiran administrasi saat pengajuan evaluasi tatap muka langsung di sekolah bersama jajaran guru pendamping BK Sekolah Cendekia BAZNAS."
           ) : (
-            "Transkrip evaluasi dikalkulasi secara otomatis oleh sistem CendekiaMetrix dengan format penimbangan 40% Holland Code RIASEC, 30% Simulasi IQ kognitif, 20% nilai akademik rapor berjalan, dan 10% kuantitas juara penelusuran ekstrakurikuler. Cetak PDF ini sebagai lampiran administrasi saat pengajuan evaluasi tatap muka langsung di sekolah bersama jajaran guru pendamping BK Sekolah Cendekia BAZNAS."
+            "Transkrip evaluasi dikalkulasi secara otomatis oleh sistem Cendekia Metrix dengan format penimbangan 40% Holland Code RIASEC, 30% Simulasi IQ kognitif, 20% nilai akademik rapor berjalan, dan 10% kuantitas juara penelusuran ekstrakurikuler. Cetak PDF ini sebagai lampiran administrasi saat pengajuan evaluasi tatap muka langsung di sekolah bersama jajaran guru pendamping BK Sekolah Cendekia BAZNAS."
           )}
         </p>
       </div>

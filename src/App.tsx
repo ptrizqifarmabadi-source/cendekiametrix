@@ -375,16 +375,16 @@ export default function App() {
         <div className="flex-1 flex flex-col items-center justify-center max-w-4xl w-full mx-auto py-8">
           
           {/* Logo & Headline */}
-          <div className="text-center space-y-3 mb-10">
+          <div className="text-center space-y-4 mb-10">
             <img 
               src="https://lh3.googleusercontent.com/d/1ugonzA_1B-ukGoqRRUIQbLK8QPIzo26V" 
               alt="Sekolah Cendekia BAZNAS Logo" 
-              className="h-16 w-auto object-contain mx-auto mb-1 rounded-xl"
+              className="h-28 sm:h-32 w-auto object-contain mx-auto mb-2 rounded-2xl transition-transform hover:scale-105 duration-300"
               referrerPolicy="no-referrer"
             />
             <div className="space-y-1">
-              <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900 dark:text-white font-display">
-                CendekiaMetrix <span className="text-blue-605 dark:text-blue-400">SCB</span>
+              <h1 className="text-3.5xl sm:text-4.5xl font-black tracking-tight text-slate-900 dark:text-white font-display">
+                Cendekia Metrix
               </h1>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-350 max-w-xl mx-auto leading-relaxed">
                 "Mapping Talent, Learning Style &amp; IQ to Your Perfect Major" • Platform Analisis Multi-Jenjang Siswa <strong className="text-emerald-600 dark:text-emerald-400">Sekolah Cendekia BAZNAS</strong>
@@ -684,12 +684,12 @@ export default function App() {
             <img 
               src="https://lh3.googleusercontent.com/d/1ugonzA_1B-ukGoqRRUIQbLK8QPIzo26V" 
               alt="Sekolah Cendekia BAZNAS Logo" 
-              className="h-8.5 w-auto object-contain shrink-0 rounded-lg shadow-sm"
+              className="h-12 w-auto object-contain shrink-0 rounded-xl shadow-md transition-all hover:scale-105"
               referrerPolicy="no-referrer"
             />
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-base font-extrabold text-slate-900 dark:text-white leading-tight font-display tracking-tight">CendekiaMetrix</span>
+                <span className="text-lg font-extrabold text-slate-900 dark:text-white leading-tight font-display tracking-tight">Cendekia Metrix</span>
                 <span className="hidden sm:inline-block px-2.5 py-0.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-full text-[10px] font-bold uppercase tracking-wider">TA 2025/2026</span>
               </div>
               <p className="text-[10px] text-slate-550 dark:text-slate-400 font-medium">Asesmen Cerdas Siswa • Sekolah Cendekia BAZNAS</p>
@@ -801,10 +801,10 @@ export default function App() {
                     <img 
                       src="https://lh3.googleusercontent.com/d/1ugonzA_1B-ukGoqRRUIQbLK8QPIzo26V" 
                       alt="Sekolah Cendekia BAZNAS Logo" 
-                      className="h-6.5 w-auto object-contain shrink-0 rounded"
+                      className="h-9 w-auto object-contain shrink-0 rounded-lg"
                       referrerPolicy="no-referrer"
                     />
-                    <span className="font-bold text-xs text-white">Menu Navigasi</span>
+                    <span className="font-bold text-sm text-white">Menu Navigasi</span>
                   </div>
                   <button onClick={() => setMobileMenuOpen(false)} className="text-slate-400 hover:text-white">
                     <X className="h-4 w-4" />
