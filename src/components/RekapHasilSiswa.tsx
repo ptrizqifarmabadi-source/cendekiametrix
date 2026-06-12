@@ -19,6 +19,7 @@ interface CompletedTestRecord {
   rekomendasiJurusan: string[];
   tanggalTes: string;
   isUserAdded?: boolean;
+  portfolio?: any;
 }
 
 // 5 default high-fidelity mock records representing peers who have completed the test (now cleared of dummy examples)
@@ -168,7 +169,8 @@ export default function RekapHasilSiswa({ appState, isAdmin, userRole }: RekapHa
       topRiasec: sortedRiasec,
       rekomendasiJurusan: recMajors,
       tanggalTes: new Date().toISOString().split("T")[0],
-      isUserAdded: true
+      isUserAdded: true,
+      portfolio: appState.portfolio
     };
 
     // Load full list to inject this without destroying out-of-scope student levels

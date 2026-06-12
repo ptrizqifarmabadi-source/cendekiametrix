@@ -18,7 +18,10 @@ import {
   ChevronRight,
   Users,
   Trophy,
-  Sparkles
+  Sparkles,
+  Bookmark,
+  Languages,
+  BookOpen
 } from "lucide-react";
 import RekapHasilSiswa from "./RekapHasilSiswa";
 
@@ -84,7 +87,8 @@ export default function LaporanAkhir({ appState, isAdmin, userRole }: LaporanAkh
     kelas: selectedStudent.kelas,
     citaCita: "Akademisi Berprestasi BAZNAS",
     hobi: "Membaca & Analitis",
-    organisasi: "OSIS / Rohis Cendekia BAZNAS"
+    organisasi: "OSIS / Rohis Cendekia BAZNAS",
+    foto: selectedStudent.foto || ""
   } : profile;
 
   const currentKeagamaan = selectedStudent ? {
@@ -563,34 +567,49 @@ export default function LaporanAkhir({ appState, isAdmin, userRole }: LaporanAkh
         </div>
 
         {/* 1. Student Personal Information */}
-        <div className="bg-gray-50/50 dark:bg-gray-950 p-5 rounded-xl border border-gray-100 dark:border-gray-850 grid grid-cols-1 md:grid-cols-2 gap-4 print:grid-cols-2 print:bg-gray-50/70 print:border-gray-200">
-          <div className="space-y-2">
-            <div className="flex gap-2 text-xs">
-              <span className="w-24 font-bold text-gray-400 font-mono uppercase">Nama Siswa:</span>
-              <span className="text-gray-900 dark:text-white font-bold">{currentProfile.nama || "-"}</span>
-            </div>
-            <div className="flex gap-2 text-xs">
-              <span className="w-24 font-bold text-gray-400 font-mono uppercase">NISN / Kelas:</span>
-              <span className="text-gray-800 dark:text-gray-300">{currentProfile.nisn || "-"} / {currentProfile.kelas || "-"}</span>
-            </div>
-            <div className="flex gap-2 text-xs">
-              <span className="w-24 font-bold text-gray-400 font-mono uppercase">Sekolah Asal:</span>
-              <span className="text-gray-700 dark:text-gray-400">Sekolah Cendekia BAZNAS (SCB)</span>
-            </div>
+        <div className="bg-gray-50/50 dark:bg-gray-950 p-5 rounded-xl border border-gray-100 dark:border-gray-850 flex flex-col md:flex-row gap-5 items-center md:items-start print:flex-row print:bg-gray-50/70 print:border-gray-200">
+          {/* Foto Siswa */}
+          <div className="w-24 h-32 md:w-28 md:h-36 shrink-0 border border-gray-205 dark:border-gray-800 rounded-xl overflow-hidden bg-white dark:bg-gray-900 shadow-sm flex items-center justify-center p-1">
+            {currentProfile.foto ? (
+              <img src={currentProfile.foto} alt="Foto siswa" className="w-full h-full object-cover rounded-lg" />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50/50 dark:bg-gray-950 text-gray-300 dark:text-gray-700">
+                <Users className="h-8 w-8 text-gray-400" />
+                <span className="text-[9px] font-mono mt-1 text-gray-500 font-black">PASFOTO</span>
+              </div>
+            )}
           </div>
 
-          <div className="space-y-2">
-            <div className="flex gap-2 text-xs">
-              <span className="w-24 font-bold text-gray-400 font-mono uppercase">Cita-Cita:</span>
-              <span className="text-gray-800 dark:text-gray-300 font-semibold">{currentProfile.citaCita || "-"}</span>
+          {/* Info Details columns */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full text-left">
+            <div className="space-y-2">
+              <div className="flex gap-2 text-xs">
+                <span className="w-24 font-bold text-gray-400 dark:text-gray-500 font-mono uppercase shrink-0">Nama Siswa:</span>
+                <span className="text-gray-900 dark:text-white font-bold">{currentProfile.nama || "-"}</span>
+              </div>
+              <div className="flex gap-2 text-xs">
+                <span className="w-24 font-bold text-gray-400 dark:text-gray-500 font-mono uppercase shrink-0">NISN / Kelas:</span>
+                <span className="text-gray-800 dark:text-gray-300 font-medium">{currentProfile.nisn || "-"} / {currentProfile.kelas || "-"}</span>
+              </div>
+              <div className="flex gap-2 text-xs">
+                <span className="w-24 font-bold text-gray-400 dark:text-gray-500 font-mono uppercase shrink-0">Sekolah Asal:</span>
+                <span className="text-gray-700 dark:text-gray-400">Sekolah Cendekia BAZNAS (SCB)</span>
+              </div>
             </div>
-            <div className="flex gap-2 text-xs">
-              <span className="w-24 font-bold text-gray-400 font-mono uppercase">Hobi / Org:</span>
-              <span className="text-gray-700 dark:text-gray-400 truncate">{currentProfile.hobi || "-"} / {currentProfile.organisasi || "-"}</span>
-            </div>
-            <div className="flex gap-2 text-xs">
-              <span className="w-24 font-bold text-gray-400 font-mono uppercase">Tanggal Input:</span>
-              <span className="text-gray-600 dark:text-gray-400 font-mono">{currentDate}</span>
+
+            <div className="space-y-2">
+              <div className="flex gap-2 text-xs">
+                <span className="w-24 font-bold text-gray-400 dark:text-gray-500 font-mono uppercase shrink-0">Cita-Cita:</span>
+                <span className="text-gray-800 dark:text-gray-300 font-semibold">{currentProfile.citaCita || "-"}</span>
+              </div>
+              <div className="flex gap-2 text-xs">
+                <span className="w-24 font-bold text-gray-400 dark:text-gray-500 font-mono uppercase shrink-0">Hobi / Org:</span>
+                <span className="text-gray-700 dark:text-gray-400 truncate">{currentProfile.hobi || "-"} / {currentProfile.organisasi || "-"}</span>
+              </div>
+              <div className="flex gap-2 text-xs">
+                <span className="w-24 font-bold text-gray-400 dark:text-gray-500 font-mono uppercase shrink-0">Tanggal Input:</span>
+                <span className="text-gray-6-600 dark:text-gray-400 font-mono">{currentDate}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -866,6 +885,258 @@ export default function LaporanAkhir({ appState, isAdmin, userRole }: LaporanAkh
                     );
                   })}
                 </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Portofolio Mandiri Siswa Section (Personal Portfolio Summary) */}
+        {(() => {
+          const currentPortfolio = selectedStudent?.portfolio || appState.portfolio;
+          
+          const getList = (sec: any): any[] => {
+            if (!sec) return [];
+            if (Array.isArray(sec)) return sec.filter(item => {
+              if (!item) return false;
+              // Check if any significant fields are filled
+              return Object.entries(item).some(([k, val]) => val && val.toString().trim() !== "" && k !== "id");
+            });
+            if (typeof sec === "object") {
+              const hasContent = Object.entries(sec).some(([k, v]) => v && v.toString().trim() !== "" && k !== "id" && k !== "level");
+              return hasContent ? [sec] : [];
+            }
+            return [];
+          };
+
+          const hafalanList = getList(currentPortfolio?.hafalan);
+          const akademikList = getList(currentPortfolio?.akademik);
+          const ekskulList = getList(currentPortfolio?.ekskul);
+          const seminarList = getList(currentPortfolio?.seminar);
+          const karyaList = getList(currentPortfolio?.karya);
+          const bahasaList = getList(currentPortfolio?.bahasa);
+
+          const isPortfolioEmpty = (p: any): boolean => {
+            if (!p) return true;
+            return (
+              hafalanList.length === 0 &&
+              akademikList.length === 0 &&
+              ekskulList.length === 0 &&
+              seminarList.length === 0 &&
+              karyaList.length === 0 &&
+              bahasaList.length === 0
+            );
+          };
+
+          const empty = isPortfolioEmpty(currentPortfolio);
+
+          if (empty) {
+            return (
+              <div className="bg-slate-50 dark:bg-gray-950 p-5 rounded-xl border border-gray-150 dark:border-gray-850 space-y-2">
+                <div className="text-[11px] font-black text-blue-650 dark:text-blue-400 uppercase tracking-widest font-mono flex items-center gap-1.5 border-b border-gray-100 dark:border-gray-850 pb-2">
+                  <Bookmark className="h-4 w-4 text-blue-600 animate-pulse" />
+                  Portofolio Mandiri & Pencapaian Tambahan Siswa
+                </div>
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 italic text-center py-4 font-mono">
+                  Belum ada data prestasi kualitatif tambahan yang diisi ke dalam draf Portofolio Mandiri kesiswaan. Silakan lengkapi di Lembar Asesmen.
+                </p>
+              </div>
+            );
+          }
+
+          return (
+            <div className="bg-white dark:bg-gray-950 p-5 rounded-xl border border-gray-150 dark:border-gray-850 space-y-4 print:space-y-3 pb-2 break-inside-avoid">
+              <div className="text-[11px] font-black text-blue-650 dark:text-blue-400 uppercase tracking-widest font-mono flex items-center gap-1.5 border-b border-gray-100 dark:border-gray-850 pb-2">
+                <Bookmark className="h-4 w-4 text-blue-600 shrink-0" />
+                Portofolio Mandiri & Hasil Pencapaian Prestasi Kualitatif
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 print:grid-cols-3 text-xs">
+                {/* 1. HAFALAN */}
+                {hafalanList.length > 0 && (
+                  <div className="p-3 bg-slate-50/50 dark:bg-gray-900 border border-gray-100 dark:border-gray-850 rounded-xl space-y-1.5 flex flex-col justify-between print:bg-gray-50/50">
+                    <div>
+                      <div className="flex justify-between items-center border-b border-gray-100 dark:border-gray-805 pb-1">
+                        <span className="text-[10px] font-extrabold text-blue-800 dark:text-blue-400 uppercase tracking-widest font-mono flex items-center gap-1">
+                          <BookOpen className="h-3 w-3 inline text-blue-500" />
+                          HAFALAN & TAHFIDZ ({hafalanList.length})
+                        </span>
+                      </div>
+                      <div className="pt-1.5 space-y-3 text-[11px] leading-5 text-gray-700 dark:text-gray-300 divide-y divide-gray-100 dark:divide-gray-800">
+                        {hafalanList.map((item, idx) => (
+                          <div key={item.id || idx} className="pt-2 first:pt-0">
+                            <div className="flex justify-between items-center text-[10px] font-mono text-gray-400">
+                              <span>No. {idx + 1} ({item.bulan || "—"}/{item.tahun || "—"})</span>
+                              {item.level && <span className="text-blue-600 dark:text-blue-400 font-bold">Lvl: {item.level}</span>}
+                            </div>
+                            {item.penyelenggara && <div className="text-[11px] text-gray-500 dark:text-gray-400"><span className="font-semibold text-gray-400">Lembaga:</span> {item.penyelenggara}</div>}
+                            <div className="mt-1 space-y-0.5">
+                              {item.juz && <div><strong>Juz:</strong> {item.juz}</div>}
+                              {item.surat && <div><strong>Surat Pilihan:</strong> {item.surat}</div>}
+                              {item.haditsDoa && <div><strong>Hadits/Doa:</strong> {item.haditsDoa}</div>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. PRESTASI AKADEMIK */}
+                {akademikList.length > 0 && (
+                  <div className="p-3 bg-slate-50/50 dark:bg-gray-900 border border-gray-100 dark:border-gray-850 rounded-xl space-y-1.5 flex flex-col justify-between print:bg-gray-50/50">
+                    <div>
+                      <div className="flex justify-between items-center border-b border-gray-100 dark:border-gray-850 pb-1">
+                        <span className="text-[10px] font-extrabold text-purple-800 dark:text-purple-400 uppercase tracking-widest font-mono flex items-center gap-1">
+                          <GraduationCap className="h-3 w-3 inline text-purple-500" />
+                          PRESTASI AKADEMIK ({akademikList.length})
+                        </span>
+                      </div>
+                      <div className="pt-1.5 space-y-3 text-[11px] leading-5 text-gray-700 dark:text-gray-300 divide-y divide-gray-100 dark:divide-gray-800">
+                        {akademikList.map((item, idx) => (
+                          <div key={item.id || idx} className="pt-2 first:pt-0">
+                            <div className="flex justify-between items-center text-[10px] font-mono text-gray-400">
+                              <span>No. {idx + 1} ({item.bulan || "—"}/{item.tahun || "—"})</span>
+                              {item.level && <span className="text-purple-600 dark:text-purple-400 font-bold">Lvl: {item.level}</span>}
+                            </div>
+                            {item.penyelenggara && <div className="text-[11px] text-gray-500 dark:text-gray-400"><span className="font-semibold text-gray-400">Penyelenggara:</span> {item.penyelenggara}</div>}
+                            <div className="mt-1 space-y-0.5">
+                              {item.juaraLomba && <div><strong>Lomba:</strong> {item.juaraLomba}</div>}
+                              {item.peringkat && <div><strong>Peringkat:</strong> {item.peringkat}</div>}
+                              {item.rataRapor && <div><strong>Rata Rapor:</strong> {item.rataRapor}</div>}
+                              {item.mapelUnggulan && <div><strong>Unggulan:</strong> {item.mapelUnggulan}</div>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. EKSTRAKURIKULER & ORGANISASI */}
+                {ekskulList.length > 0 && (
+                  <div className="p-3 bg-slate-50/50 dark:bg-gray-900 border border-gray-100 dark:border-gray-850 rounded-xl space-y-1.5 flex flex-col justify-between print:bg-gray-50/50">
+                    <div>
+                      <div className="flex justify-between items-center border-b border-gray-100 dark:border-gray-850 pb-1">
+                        <span className="text-[10px] font-extrabold text-emerald-800 dark:text-emerald-400 uppercase tracking-widest font-mono flex items-center gap-1">
+                          <Trophy className="h-3 w-3 inline text-emerald-500" />
+                          EKSKUL & ORGANISASI ({ekskulList.length})
+                        </span>
+                      </div>
+                      <div className="pt-1.5 space-y-3 text-[11px] leading-5 text-gray-700 dark:text-gray-300 divide-y divide-gray-100 dark:divide-gray-800">
+                        {ekskulList.map((item, idx) => (
+                          <div key={item.id || idx} className="pt-2 first:pt-0">
+                            <div className="flex justify-between items-center text-[10px] font-mono text-gray-400">
+                              <span>No. {idx + 1} ({item.bulan || "—"}/{item.tahun || "—"})</span>
+                              {item.level && <span className="text-emerald-600 dark:text-emerald-400 font-bold">Lvl: {item.level}</span>}
+                            </div>
+                            {item.penyelenggara && <div className="text-[11px] text-gray-500 dark:text-gray-400"><span className="font-semibold text-gray-400">Penyelenggara:</span> {item.penyelenggara}</div>}
+                            <div className="mt-1 space-y-0.5">
+                              {item.osis && <div><strong>OSIS:</strong> {item.osis}</div>}
+                              {item.pramuka && <div><strong>Pramuka:</strong> {item.pramuka}</div>}
+                              {item.rohis && <div><strong>Rohis:</strong> {item.rohis}</div>}
+                              {item.paskibraPmr && <div><strong>Lainnya:</strong> {item.paskibraPmr}</div>}
+                              {item.olahragaSeni && <div><strong>Olahraga/Seni:</strong> {item.olahragaSeni}</div>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. SEMINAR & PELATIHAN */}
+                {seminarList.length > 0 && (
+                  <div className="p-3 bg-slate-50/50 dark:bg-gray-900 border border-gray-100 dark:border-gray-850 rounded-xl space-y-1.5 flex flex-col justify-between print:bg-gray-50/50">
+                    <div>
+                      <div className="flex justify-between items-center border-b border-gray-100 dark:border-gray-850 pb-1">
+                        <span className="text-[10px] font-extrabold text-amber-800 dark:text-amber-400 uppercase tracking-widest font-mono flex items-center gap-1">
+                          <Award className="h-3 w-3 inline text-amber-500" />
+                          SEMINAR & WORKSHOP ({seminarList.length})
+                        </span>
+                      </div>
+                      <div className="pt-1.5 space-y-3 text-[11px] leading-5 text-gray-700 dark:text-gray-300 divide-y divide-gray-100 dark:divide-gray-800">
+                        {seminarList.map((item, idx) => (
+                          <div key={item.id || idx} className="pt-2 first:pt-0">
+                            <div className="flex justify-between items-center text-[10px] font-mono text-gray-400">
+                              <span>No. {idx + 1} ({item.bulan || "—"}/{item.tahun || "—"})</span>
+                              {item.level && <span className="text-amber-600 dark:text-amber-400 font-bold">Lvl: {item.level}</span>}
+                            </div>
+                            {item.penyelenggara && <div className="text-[11px] text-gray-500 dark:text-gray-400"><span className="font-semibold text-gray-400">Penyelenggara:</span> {item.penyelenggara}</div>}
+                            <div className="mt-1 space-y-0.5">
+                              {item.publicSpeaking && <div><strong>Public Speaking:</strong> {item.publicSpeaking}</div>}
+                              {item.workshopSains && <div><strong>Workshop/Sains:</strong> {item.workshopSains}</div>}
+                              {item.seminarKarir && <div><strong>Seminar Karir:</strong> {item.seminarKarir}</div>}
+                              {item.pelatihanIt && <div><strong>IT & Desain:</strong> {item.pelatihanIt}</div>}
+                              {item.webinar && <div><strong>Webinar:</strong> {item.webinar}</div>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 5. KARYA KREATIF NYATA */}
+                {karyaList.length > 0 && (
+                  <div className="p-3 bg-slate-50/50 dark:bg-gray-900 border border-gray-100 dark:border-gray-850 rounded-xl space-y-1.5 flex flex-col justify-between print:bg-gray-50/50">
+                    <div>
+                      <div className="flex justify-between items-center border-b border-gray-100 dark:border-gray-850 pb-1">
+                        <span className="text-[10px] font-extrabold text-teal-800 dark:text-teal-400 uppercase tracking-widest font-mono flex items-center gap-1">
+                          <Sparkles className="h-3 w-3 inline text-teal-500" />
+                          KARYA KREATIF NYATA ({karyaList.length})
+                        </span>
+                      </div>
+                      <div className="pt-1.5 space-y-3 text-[11px] leading-5 text-gray-700 dark:text-gray-300 divide-y divide-gray-100 dark:divide-gray-800">
+                        {karyaList.map((item, idx) => (
+                          <div key={item.id || idx} className="pt-2 first:pt-0">
+                            <div className="flex justify-between items-center text-[10px] font-mono text-gray-400">
+                              <span>No. {idx + 1} ({item.bulan || "—"}/{item.tahun || "—"})</span>
+                              {item.level && <span className="text-teal-600 dark:text-teal-400 font-bold">Lvl: {item.level}</span>}
+                            </div>
+                            {item.penyelenggara && <div className="text-[11px] text-gray-500 dark:text-gray-400"><span className="font-semibold text-gray-400">Penyelenggara:</span> {item.penyelenggara}</div>}
+                            <div className="mt-1 space-y-0.5">
+                              {item.tulisan && <div><strong>Tulisan Sastra:</strong> {item.tulisan}</div>}
+                              {item.desain && <div><strong>Desain Poster:</strong> {item.desain}</div>}
+                              {item.video && <div><strong>Video/Klip:</strong> {item.video}</div>}
+                              {item.mindmap && <div><strong>Mindmap R&D:</strong> {item.mindmap}</div>}
+                              {item.karyaSeni && <div><strong>Karya Seni:</strong> {item.karyaSeni}</div>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 6. BAHASA ASING */}
+                {bahasaList.length > 0 && (
+                  <div className="p-3 bg-slate-50/50 dark:bg-gray-900 border border-gray-100 dark:border-gray-850 rounded-xl space-y-1.5 flex flex-col justify-between print:bg-gray-50/50">
+                    <div>
+                      <div className="flex justify-between items-center border-b border-gray-100 dark:border-gray-850 pb-1">
+                        <span className="text-[10px] font-extrabold text-rose-800 dark:text-rose-400 uppercase tracking-widest font-mono flex items-center gap-1">
+                          <Languages className="h-3 w-3 inline text-rose-500" />
+                          BAHASA ASING (CEFR) ({bahasaList.length})
+                        </span>
+                      </div>
+                      <div className="pt-1.5 space-y-3 text-[11px] leading-5 text-gray-700 dark:text-gray-300 divide-y divide-gray-100 dark:divide-gray-800">
+                        {bahasaList.map((item, idx) => (
+                          <div key={item.id || idx} className="pt-2 first:pt-0">
+                            <div className="flex justify-between items-center text-[10px] font-mono text-gray-400">
+                              <span>No. {idx + 1} ({item.bulan || "—"}/{item.tahun || "—"})</span>
+                              {item.level && <span className="text-rose-650 font-bold">Lvl: {item.level}</span>}
+                            </div>
+                            {item.penyelenggara && <div className="text-[11px] text-gray-500 dark:text-gray-400"><span className="font-semibold text-gray-400">Sertifikat:</span> {item.penyelenggara}</div>}
+                            <div className="mt-1 space-y-0.5">
+                              {item.inggris && <div><strong>Inggris:</strong> {item.inggris}</div>}
+                              {item.arab && <div><strong>Bahasa Arab:</strong> {item.arab}</div>}
+                              {item.lainnya && <div><strong>Bahasa Lain:</strong> {item.lainnya}</div>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           );

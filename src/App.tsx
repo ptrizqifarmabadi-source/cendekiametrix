@@ -18,6 +18,8 @@ import AIRecommendations from "./components/AIRecommendations";
 import Prediction from "./components/Prediction";
 import LaporanAkhir from "./components/LaporanAkhir";
 import AdminAnalytics from "./components/AdminAnalytics";
+import PortofolioMandiri from "./components/PortofolioMandiri";
+import TemanCurhatAI from "./components/TemanCurhatAI";
 import { OFFICIAL_STUDENTS } from "./data/studentList";
 
 // Outer layout elements & dashboard widgets
@@ -52,7 +54,8 @@ import {
   Heart,
   Users,
   Lock,
-  Shield
+  Shield,
+  Bookmark
 } from "lucide-react";
 
 const LOCAL_STORAGE_KEY = "sipetakuliah_state_v1";
@@ -136,7 +139,15 @@ const DEFAULT_STATE: FullAppState = {
       kelas12: ""
     }
   },
-  theme: "light"
+  theme: "light",
+  portfolio: {
+    hafalan: [],
+    akademik: [],
+    ekskul: [],
+    seminar: [],
+    karya: [],
+    bahasa: []
+  }
 };
 
 export default function App() {
@@ -147,7 +158,7 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
   // New admin and role state management
-  const [userRole, setUserRole] = useState<"peserta" | "admin" | "bk_smp" | "bk_sma" | null>(() => {
+  const [userRole, setUserRole] = useState<"peserta" | "peserta_curhat" | "admin" | "bk_smp" | "bk_sma" | null>(() => {
     return (localStorage.getItem("sipetakuliah_current_role") as any) || null;
   });
   const [adminUsername, setAdminUsername] = useState("");
@@ -161,12 +172,89 @@ export default function App() {
   const [studentLoginError, setStudentLoginError] = useState("");
   const [studentShowSuggestions, setStudentShowSuggestions] = useState(false);
 
-  const handleSetRole = (role: "peserta" | "admin" | "bk_smp" | "bk_sma" | null) => {
+  // Counseling login variables
+  const [counselingJenjang, setCounselingJenjang] = useState<"SMP" | "SMA">("SMA");
+  const [counselingNama, setCounselingNama] = useState("");
+  const [counselingNisn, setCounselingNisn] = useState("");
+  const [counselingLoginError, setCounselingLoginError] = useState("");
+  const [counselingShowSuggestions, setCounselingShowSuggestions] = useState(false);
+  const [counselingStage, setCounselingStage] = useState<"select_jenjang" | "login_form">("select_jenjang");
+
+  const handleCounselingStudentLogin = (nama: string, nisn: string, jenjang: "SMP" | "SMA") => {
+    if (!nama.trim() || !nisn.trim()) {
+      setCounselingLoginError("Nama Lengkap dan NISN wajib diisi!");
+      return;
+    }
+    setCounselingLoginError("");
+
+    const cleanNisn = nisn.trim();
+    const cleanNama = nama.trim();
+
+    const officialMatch = OFFICIAL_STUDENTS.find(
+      s => s.nisn === cleanNisn || s.nama.toLowerCase() === cleanNama.toLowerCase()
+    );
+
+    if (!officialMatch) {
+      setCounselingLoginError("Nama dan NISN tidak cocok dengan database kesiswaan Cendekia BAZNAS. Silakan periksa kembali.");
+      return;
+    }
+
+    const resolvedNama = officialMatch.nama;
+    const resolvedNisn = officialMatch.nisn;
+    const resolvedGender = officialMatch.gender; 
+    const initialKelas = jenjang === "SMP" 
+      ? `Kelas 7 ${resolvedGender}` 
+      : `Kelas 10 ${resolvedGender}`;
+
+    const studentStateKey = `${LOCAL_STORAGE_KEY}_student_${resolvedNisn}`;
+    const savedStudentStateObj = localStorage.getItem(studentStateKey);
+
+    if (savedStudentStateObj) {
+      try {
+        const parsed = JSON.parse(savedStudentStateObj);
+        parsed.profile.nama = resolvedNama;
+        parsed.profile.nisn = resolvedNisn;
+        parsed.profile.jenisKelamin = resolvedGender;
+        parsed.jenjang = jenjang;
+        setAppState(parsed);
+      } catch (e) {
+        setAppState({
+          ...DEFAULT_STATE,
+          jenjang: jenjang,
+          profile: {
+            ...DEFAULT_STATE.profile,
+            nama: resolvedNama,
+            nisn: resolvedNisn,
+            jenisKelamin: resolvedGender,
+            kelas: initialKelas
+          }
+        });
+      }
+    } else {
+      setAppState({
+        ...DEFAULT_STATE,
+        jenjang: jenjang,
+        profile: {
+          ...DEFAULT_STATE.profile,
+          nama: resolvedNama,
+          nisn: resolvedNisn,
+          jenisKelamin: resolvedGender,
+          kelas: initialKelas
+        }
+      });
+    }
+
+    handleSetRole("peserta_curhat");
+  };
+
+  const handleSetRole = (role: "peserta" | "peserta_curhat" | "admin" | "bk_smp" | "bk_sma" | null) => {
     setUserRole(role);
     if (role) {
       localStorage.setItem("sipetakuliah_current_role", role);
       if (role === "admin" || role === "bk_smp" || role === "bk_sma") {
         setActiveMenu(10); // Default to Admin Analytics & Infographics
+      } else if (role === "peserta_curhat") {
+        setActiveMenu(30); // Special active menu ID for counseling main view
       } else {
         setActiveMenu(0); // Default to Student Dashboard
       }
@@ -180,6 +268,11 @@ export default function App() {
       setStudentNama("");
       setStudentNisn("");
       setStudentLoginError("");
+      // Reset counseling login states
+      setCounselingStage("select_jenjang");
+      setCounselingNama("");
+      setCounselingNisn("");
+      setCounselingLoginError("");
     }
   };
 
@@ -213,7 +306,30 @@ export default function App() {
           gayaBelajar: {
             ...DEFAULT_STATE.gayaBelajar,
             ...(parsed.gayaBelajar || {})
-          }
+          },
+          portfolio: (() => {
+            const rawPortfolio = parsed.portfolio || {};
+            const sanitized: any = {
+              hafalan: [],
+              akademik: [],
+              ekskul: [],
+              seminar: [],
+              karya: [],
+              bahasa: []
+            };
+            const categories = ["hafalan", "akademik", "ekskul", "seminar", "karya", "bahasa"];
+            categories.forEach((cat) => {
+              if (Array.isArray(rawPortfolio[cat])) {
+                sanitized[cat] = rawPortfolio[cat];
+              } else if (rawPortfolio[cat] && typeof rawPortfolio[cat] === "object") {
+                const valueCount = Object.values(rawPortfolio[cat]).filter(Boolean).length;
+                if (valueCount > 0) {
+                  sanitized[cat] = [{ id: "legacy-1", ...rawPortfolio[cat] }];
+                }
+              }
+            });
+            return sanitized;
+          })()
         });
       } catch (e) {
         setAppState(DEFAULT_STATE);
@@ -380,6 +496,7 @@ export default function App() {
         { id: 4, label: "Minat Bakat (Ekskul)", icon: Trophy },
         { id: 6, label: "Tes IQ Kognitif", icon: BrainCircuit },
         { id: 7, label: "Rekomendasi Studi AI", icon: Brain },
+        { id: 12, label: "Portofolio Mandiri", icon: Bookmark },
         { id: 9, label: "Evaluasi Bakat & Potensi", icon: Award }
       ]
     : [
@@ -392,6 +509,7 @@ export default function App() {
         { id: 6, label: "Tes IQ Kognitif", icon: BrainCircuit },
         { id: 7, label: "Rekomendasi Karir AI", icon: Brain },
         { id: 8, label: "Prediksi Jalur Admisia", icon: TrendingUp },
+        { id: 12, label: "Portofolio Mandiri", icon: Bookmark },
         { id: 9, label: "Laporan Kelulusan", icon: Award }
       ];
 
@@ -439,7 +557,7 @@ export default function App() {
           </div>
 
           {/* Core selection grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full max-w-6xl">
             
             {/* Card 1: Student / Candidate */}
             <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-6 relative overflow-hidden group">
@@ -632,7 +750,193 @@ export default function App() {
               )}
             </div>
 
-            {/* Card 2: Admin */}
+            {/* Card 2: Konsultasi BK Mandiri (Teman CurhatKu) */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-6 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/10 transition-colors"></div>
+              
+              {counselingStage === "select_jenjang" ? (
+                <>
+                  <div className="space-y-5">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-450 flex items-center justify-center shadow-inner">
+                      <Heart className="h-6 w-6" />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <h3 className="text-xl font-bold text-slate-900 dark:text-white">Konsultasi BK Mandiri</h3>
+                      <p className="text-xs text-slate-550 dark:text-slate-400 leading-relaxed min-h-[60px]">
+                        Butuh kawan dengar? Obrolin rasa rindu rumah (homesick), stres asrama, kejenuhan belajar, atau setoran hafalan yang macet bareng asisten AI <strong className="text-emerald-600 dark:text-emerald-400">Teman CurhatKu</strong> secara santai.
+                      </p>
+                    </div>
+
+                    {/* Tab Selector SMP / SMA */}
+                    <div className="bg-slate-100 dark:bg-slate-955 p-1.5 rounded-2xl flex border border-slate-200 dark:border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => setCounselingJenjang("SMP")}
+                        className={`flex-1 py-1.5 text-center rounded-xl text-[11px] font-black tracking-wide transition-all cursor-pointer ${
+                          counselingJenjang === "SMP"
+                            ? "bg-emerald-600 text-white shadow-sm font-bold"
+                            : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
+                        }`}
+                      >
+                        Jenjang SMP
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCounselingJenjang("SMA")}
+                        className={`flex-1 py-1.5 text-center rounded-xl text-[11px] font-black tracking-wide transition-all cursor-pointer ${
+                          counselingJenjang === "SMA"
+                            ? "bg-emerald-650 text-white shadow-sm font-bold"
+                            : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
+                        }`}
+                      >
+                        Jenjang SMA
+                      </button>
+                    </div>
+
+                    <div className="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-4">
+                      <div className="flex items-center gap-2.5 text-xs text-slate-600 dark:text-slate-400 font-medium">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                        <span>Curhat asyik gaya bahasa teman akrab</span>
+                      </div>
+                      <div className="flex items-center gap-2.5 text-xs text-slate-600 dark:text-slate-400 font-medium">
+                        <div className="w-1.5 h-1.5 rounded-full bg-teal-500"></div>
+                        <span>Terintegrasi biodata &amp; dipantau Guru BK</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setCounselingStage("login_form");
+                      setCounselingLoginError("");
+                    }}
+                    className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer text-center uppercase tracking-wider block font-mono"
+                  >
+                    Lanjut Ke Curhat {counselingJenjang}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-5">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-455 flex items-center justify-center shadow-inner">
+                      <Lock className="h-6 w-6" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white">Akses Teman CurhatKu</h3>
+                        <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full text-[9px] font-bold font-mono uppercase tracking-wide">
+                          {counselingJenjang}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-550 dark:text-slate-400 leading-relaxed font-sans">
+                        Pilih nama Anda, masukkan NISN sebagai PIN keamanan untuk membuka portal obrolan konseling.
+                      </p>
+                    </div>
+
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        handleCounselingStudentLogin(counselingNama, counselingNisn, counselingJenjang);
+                      }}
+                      className="space-y-3.5 pt-3 border-t border-slate-100 dark:border-slate-800"
+                    >
+                      <div className="space-y-1 relative">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Nama Lengkap Siswa</label>
+                        <input
+                          type="text"
+                          placeholder="Ketik Nama (Contoh: Abdul, Ahmad...)"
+                          value={counselingNama}
+                          onChange={(e) => {
+                            setCounselingNama(e.target.value);
+                            setCounselingShowSuggestions(true);
+                          }}
+                          onFocus={() => setCounselingShowSuggestions(true)}
+                          className="w-full px-3 py-2.5 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none text-slate-900 dark:text-white font-medium"
+                          required
+                        />
+                        
+                        {/* Autocomplete Suggestions */}
+                        {counselingShowSuggestions && counselingNama.trim().length >= 2 && (
+                          <div className="absolute left-0 right-0 top-[100%] z-50 mt-1 max-h-48 overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl divide-y divide-slate-100 dark:divide-slate-800">
+                            {OFFICIAL_STUDENTS.filter(s => 
+                              s.nama.toLowerCase().includes(counselingNama.toLowerCase())
+                            ).length === 0 ? (
+                              <div className="px-3 py-2 text-xs text-slate-400 italic">
+                                Siswa tidak ditemukan
+                              </div>
+                            ) : (
+                              OFFICIAL_STUDENTS.filter(s => 
+                                s.nama.toLowerCase().includes(counselingNama.toLowerCase())
+                              ).map(s => (
+                                <button
+                                  key={s.nisn}
+                                  type="button"
+                                  onClick={() => {
+                                    setCounselingNama(s.nama);
+                                    setCounselingNisn(s.nisn);
+                                    setCounselingShowSuggestions(false);
+                                  }}
+                                  className="w-full px-3.5 py-2.5 text-left text-xs text-slate-700 dark:text-slate-350 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors flex items-center justify-between cursor-pointer"
+                                >
+                                  <div>
+                                    <span className="font-bold block text-slate-900 dark:text-white">{s.nama}</span>
+                                    <span className="text-[10px] text-slate-450 dark:text-slate-500 font-mono">NISN: {s.nisn}</span>
+                                  </div>
+                                  <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase font-mono bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-450`}>
+                                    {s.gender}
+                                  </span>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">PIN Akses (NISN)</label>
+                        <input
+                          type="password"
+                          placeholder="Masukkan PIN Anda"
+                          value={counselingNisn}
+                          onChange={(e) => setCounselingNisn(e.target.value)}
+                          className="w-full px-3 py-2.5 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none text-slate-900 dark:text-white font-mono"
+                          required
+                        />
+                      </div>
+                      
+                      {counselingLoginError && (
+                        <div className="text-[11px] text-red-650 dark:text-red-400 font-bold font-mono">
+                          * {counselingLoginError}
+                        </div>
+                      )}
+
+                      <div className="flex gap-2.5 pt-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCounselingStage("select_jenjang");
+                            setCounselingLoginError("");
+                          }}
+                          className="flex-1 py-3 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-450 font-bold text-xs rounded-xl hover:bg-slate-50 dark:hover:bg-slate-850 transition-all cursor-pointer text-center uppercase tracking-wide font-mono"
+                        >
+                          Kembali
+                        </button>
+                        <button
+                          type="submit"
+                          className="flex-1.5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer text-center uppercase tracking-wide block font-mono"
+                        >
+                          Mulai Chat
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Card 3: Admin */}
             <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-6 relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/5 rounded-full blur-2xl"></div>
 
@@ -716,6 +1020,46 @@ export default function App() {
         <div className="text-center text-[10px] text-slate-400 py-4 font-mono">
           © 2026 SEKOLAH CENDEKIA BAZNAS • SISTEM INFORMASI BIMBINGAN BK
         </div>
+      </div>
+    );
+  }
+
+  if (userRole === "peserta_curhat") {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans flex flex-col transition-colors duration-200">
+        <header className="sticky top-0 z-30 bg-white/90 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-slate-800 px-4 py-3.5 shadow-sm flex items-center justify-between no-print md:px-8">
+          <div className="flex items-center gap-3">
+            <img 
+              src="https://lh3.googleusercontent.com/d/1ugonzA_1B-ukGoqRRUIQbLK8QPIzo26V" 
+              alt="Sekolah Cendekia BAZNAS Logo" 
+              className="h-10 w-auto object-contain shrink-0 rounded-xl"
+              referrerPolicy="no-referrer"
+            />
+            <div>
+              <span className="text-base font-black text-slate-900 dark:text-white leading-tight font-display tracking-tight">Cendekia Metrix</span>
+              <p className="text-[10px] text-slate-500 font-medium">Bimbingan Konseling Mandiri • Teman CurhatKu</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={handleToggleTheme}
+              className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-emerald-600 dark:text-slate-400 border border-slate-150 dark:border-slate-700 transition-colors cursor-pointer"
+            >
+              {darkMode ? <Sun className="h-4 w-4 text-amber-500" /> : <Moon className="h-4 w-4" />}
+            </button>
+          </div>
+        </header>
+        <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-5xl mx-auto w-full">
+          <TemanCurhatAI
+            profile={appState.profile}
+            jenjang={appState.jenjang}
+            onUpdateProfile={(next) => setAppState({ ...appState, profile: next })}
+            onLogout={() => handleSetRole(null)}
+          />
+        </main>
+        <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-4 text-center text-xs text-slate-400 no-print">
+          <span>Dilindungi Bimbingan BK</span> • <span className="font-semibold text-emerald-600">Sekolah Cendekia BAZNAS (SCB)</span>
+        </footer>
       </div>
     );
   }
@@ -1016,7 +1360,7 @@ export default function App() {
               onUpdateRecommendations={(next) => {
                 setAppState({ ...appState, aiRecommendation: next });
               }}
-              onNext={() => handleNavigate(appState.jenjang === "SMP" ? 9 : 8)}
+              onNext={() => handleNavigate(appState.jenjang === "SMP" ? 12 : 8)}
               onPrev={() => handleNavigate(6)}
             />
           )}
@@ -1024,8 +1368,19 @@ export default function App() {
           {activeMenu === 8 && (
             <Prediction
               appState={appState}
-              onNext={() => handleNavigate(9)}
+              onNext={() => handleNavigate(12)}
               onPrev={() => handleNavigate(7)}
+            />
+          )}
+
+          {activeMenu === 12 && (
+            <PortofolioMandiri
+              state={appState.portfolio}
+              onChange={(next) => setAppState({ ...appState, portfolio: next })}
+              onNext={() => handleNavigate(9)}
+              onPrev={() => handleNavigate(appState.jenjang === "SMP" ? 7 : 8)}
+              jenjang={appState.jenjang}
+              profile={appState.profile}
             />
           )}
 

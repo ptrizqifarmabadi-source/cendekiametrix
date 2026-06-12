@@ -13,6 +13,7 @@ export interface StudentProfile {
   citaCita: string;
   hobi: string;
   organisasi: string;
+  foto?: string; // Base64 string or dataURL representing the student photo
 }
 
 export type HafalanQuranType = "0-1 juz" | "2-5 juz" | "6-10 juz" | "11-20 juz" | "> 20 juz";
@@ -98,6 +99,88 @@ export interface AIRecommendation {
   };
 }
 
+export interface PortfolioHafalan {
+  id: string;
+  juz: string;
+  surat: string;
+  haditsDoa: string;
+  level: "Pemula" | "Menengah" | "Mahir" | "";
+  bulan: string;
+  tahun: string;
+  penyelenggara: string;
+}
+
+export interface PortfolioAkademik {
+  id: string;
+  juaraLomba: string;
+  peringkat: string;
+  rataRapor: string;
+  mapelUnggulan: string;
+  level: "Sekolah" | "Kecamatan" | "Kabupaten" | "Provinsi" | "Nasional" | "";
+  bulan: string;
+  tahun: string;
+  penyelenggara: string;
+}
+
+export interface PortfolioEkskul {
+  id: string;
+  osis: string;
+  pramuka: string;
+  rohis: string;
+  paskibraPmr: string;
+  olahragaSeni: string;
+  level: "Anggota" | "Pengurus inti" | "Ketua" | "Pelatih" | "";
+  bulan: string;
+  tahun: string;
+  penyelenggara: string;
+}
+
+export interface PortfolioSeminar {
+  id: string;
+  publicSpeaking: string;
+  workshopSains: string;
+  seminarKarir: string;
+  pelatihanIt: string;
+  webinar: string;
+  level: "Peserta" | "Peserta aktif" | "Lulus ujian" | "Lulus terbaik" | "";
+  bulan: string;
+  tahun: string;
+  penyelenggara: string;
+}
+
+export interface PortfolioKarya {
+  id: string;
+  tulisan: string;
+  desain: string;
+  video: string;
+  mindmap: string;
+  karyaSeni: string;
+  level: "Pribadi" | "Internal sekolah" | "Publikasi eksternal" | "Juara lomba" | "";
+  bulan: string;
+  tahun: string;
+  penyelenggara: string;
+}
+
+export interface PortfolioBahasa {
+  id: string;
+  inggris: string;
+  arab: string;
+  lainnya: string;
+  level: "A1" | "A2" | "B1" | "B2+" | "";
+  bulan: string;
+  tahun: string;
+  penyelenggara: string;
+}
+
+export interface PortfolioState {
+  hafalan: PortfolioHafalan[];
+  akademik: PortfolioAkademik[];
+  ekskul: PortfolioEkskul[];
+  seminar: PortfolioSeminar[];
+  karya: PortfolioKarya[];
+  bahasa: PortfolioBahasa[];
+}
+
 export interface FullAppState {
   jenjang: "SMP" | "SMA";
   profile: StudentProfile;
@@ -109,4 +192,5 @@ export interface FullAppState {
   iqTest: IQTestState;
   aiRecommendation: AIRecommendation;
   theme: "light" | "dark";
+  portfolio?: PortfolioState;
 }

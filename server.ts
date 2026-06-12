@@ -222,6 +222,171 @@ async function startServer() {
     }
   });
 
+  // Counsel Chat API endpoint
+  app.post("/api/counsel-chat", async (req, res) => {
+    try {
+      const { message, history, studentInfo } = req.body;
+      const apiKey = process.env.GEMINI_API_KEY;
+      const isKeyDummy = !apiKey || apiKey === "MY_GEMINI_API_KEY" || apiKey.trim() === "";
+
+      if (isKeyDummy) {
+        return res.json({
+          reply: generateLocalReplyFallback(message, studentInfo),
+          source: "fallback"
+        });
+      }
+
+      const ai = new GoogleGenAI({
+        apiKey: apiKey,
+        httpOptions: {
+          headers: {
+            "User-Agent": "aistudio-build",
+          },
+        },
+      });
+
+      const systemInstruction = `Anda adalah "Teman CurhatKu", asisten konseling AI bimbingan konseling dan teman curhat cerdas untuk siswa di Sekolah Cendekia BAZNAS (sekolah berasrama dhuafa berprestasi tingkat SMP dan SMA).
+      
+      INFORMASI SISWA YANG SEDANG CURHAT:
+      - Nama: ${studentInfo?.nama || "Siswa"}
+      - NISN: ${studentInfo?.nisn || "-"}
+      - Kelas: ${studentInfo?.kelas || "-"}
+      - Jenjang: ${studentInfo?.jenjang || "-"}
+      
+      KETENTUAN UTAMA GAYA KOMUNIKASI ANDA:
+      1. Gunakan bahasa santai, kasual, akrab, hangat, penuh empati, ramah, dan bersahabat khas bahasa teman sebaya atau sahabat akrab siswa Indonesia (gunakan panggilan seperti "lo", "gue", "kamu", "aku", "sis", "bro", "sahabat", "temen curhat", dll.).
+      2. Jangan sekali-kali memakai bahasa yang terlalu formal, kaku, berjarak, birokratis, atau terdengar seperti guru BK formal yang menceramahi murid. Posisikan diri Anda benar-benar sebagai teman sebaya yang suportif, cerdas, mengerti situasi sekolah berasrama (boarding), dan bisa diandalkan.
+      3. Terapkan prinsip konseling Islami yang sejuk, santun, rahmatan lil alamin, menenangkan hati, penuh motivasi optimis, serta mendorong kemandirian dan rasa syukur di asrama Sekolah Cendekia BAZNAS (SCB).
+      4. Jika siswa bercerita merasa lelah belajar, pusing tugas, homesick, atau perselisihan pertemanan di asrama, dengerin ceritanya dulu, validasi perasaannya, setelah itu baru berikan saran praktis yang santai, menyemangati, dan membangun keharmonisan asrama.
+      5. JANGAN PERNAH memberikan saran negatif, provokatif, atau melanggar syariah/aturan sekolah. Dorong siswa selalu rajin shalat, terbuka bercerita, dan bertekad lulus dengan prestasi hebat.`;
+
+      let contents: any[] = [];
+      if (history && Array.isArray(history)) {
+        history.forEach((h: any) => {
+          contents.push({
+            role: h.sender === "student" ? "user" : "model",
+            parts: [{ text: h.text }]
+          });
+        });
+      }
+      contents.push({
+        role: "user",
+        parts: [{ text: message }]
+      });
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: contents,
+        config: {
+          systemInstruction: systemInstruction,
+          temperature: 0.7,
+        }
+      });
+
+      const reply = response.text || "Aduh sorry banget loh, jaringan gue lagi agak lemot nih. Bisa lo ulang ceritanya lagi asyik?";
+      return res.json({
+        reply: reply,
+        source: "gemini-api"
+      });
+
+    } catch (error: any) {
+      console.error("Gemini counsel chat endpoint error:", error);
+      return res.json({
+        reply: "Waduh sorry banget ya bro/sis, server gue barusan kepeleset nih hiks. Tapi tenang aja, jangan patah semangat ya, gue di sini selalu setia dengerin keluh kesah lo kok!",
+        source: "error"
+      });
+    }
+  });
+
+  // Counsel Chat Dialog Auto-Evaluation & Summary API endpoint
+  app.post("/api/summarize-dialog", async (req, res) => {
+    try {
+      const { history, studentInfo } = req.body;
+      const apiKey = process.env.GEMINI_API_KEY;
+      const isKeyDummy = !apiKey || apiKey === "MY_GEMINI_API_KEY" || apiKey.trim() === "";
+
+      if (isKeyDummy) {
+        return res.json({
+          summary: `Ananda ${studentInfo?.nama || "Siswa"} menceritakan keluh kesahnya secara personal. Topik utama yang dominan adalah dinamika asrama Sekolah Cendekia BAZNAS. Siswa terindikasi membutuhkan perhatian emosional ringan dan pembinaan adaptasi asrama.`,
+          actionItems: [
+            "Lakukan konseling santai secara interpersonal pasca kegiatan asrama.",
+            "Koordinasi dengan Ustadz / Ustadzah pendamping kamar tempat tinggal santri.",
+            "Berikan dorongan mental yang suportif agar memacu kemandirian ananda."
+          ],
+          source: "fallback"
+        });
+      }
+
+      const ai = new GoogleGenAI({
+        apiKey: apiKey,
+        httpOptions: {
+          headers: {
+            "User-Agent": "aistudio-build",
+          },
+        },
+      });
+
+      const prompt = `Anda adalah Ahli Psikologi Remaja dan Konselor Senior Bimbingan Konseling (BK) di Sekolah Cendekia BAZNAS (sekolah berasrama dhuafa berprestasi pertama di Indonesia).
+      
+      Tugas Anda adalah menganalisis transkrip dialog curhat seorang siswa berikut ini dengan Asisten AI Konseling "Teman CurhatKu". 
+      Analisis ini bertujuan membekali Guru BK di dunia nyata dengan tinjauan psikososial dan pedagogis yang empati, ringkas, dan tajam agar pendampingan fisik kepada siswa berjalan harmonis.
+      
+      DATA SISWA:
+      - Nama: ${studentInfo?.nama || "Siswa"}
+      - NISN: ${studentInfo?.nisn || "-"}
+      - Kelas: ${studentInfo?.kelas || "-"}
+      - Jenjang: ${studentInfo?.jenjang || "-"}
+      
+      TRANSKRIP DIALOG CURHAT:
+      ${JSON.stringify(history)}
+      
+      Hasilkan keluaran JSON terstruktur yang valid yang berisi:
+      1. "summary": Analisis naratif 3-4 kalimat padat yang menguraikan inti keluhan siswa, kondisi kecemasan, rasa rindu rumah (homesick), stres hafalan Quran/hadits, atau isu pertemanan asrama yang terdeteksi, serta aspek emosionalnya.
+      2. "actionItems": Array dari tepat 3 kalimat rencana aksi / tindak lanjut konkret untuk Guru BK sekolah di dunia nyata untuk mendukung kondisi psikologis siswa ini.
+      `;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              summary: { type: Type.STRING },
+              actionItems: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING }
+              }
+            },
+            required: ["summary", "actionItems"]
+          }
+        }
+      });
+
+      const responseText = response.text || "{}";
+      const resultData = JSON.parse(responseText);
+
+      return res.json({
+        summary: resultData.summary,
+        actionItems: resultData.actionItems,
+        source: "gemini-api"
+      });
+
+    } catch (error: any) {
+      console.error("Gemini summarize dialog error:", error);
+      return res.json({
+        summary: `Terjadi kendala sistem saat menganalisis dialog dengan AI. Guru BK disarankan tetap memantau rekam chat manual siswa.`,
+        actionItems: [
+          "Pantau interaksi komunikasi kesiswaan siswa di kelas.",
+          "Verifikasi kendala kesiswaan secara manual jika ada aduan khusus.",
+          "Jaga jalinan komunikasi aktif dengan pembina asrama."
+        ],
+        source: "error"
+      });
+    }
+  });
+
   // Serve static files / Vite middleware
   if (process.env.NODE_ENV !== "production") {
     console.log("Setting up Vite environment in development mode...");
@@ -506,6 +671,36 @@ Kombinasi rapor akademik yang sehat, rekam ketahfidzan Al-Quran (${keagamaan.haf
       kelas12: plan12
     }
   };
+}
+
+/**
+ * Friendly conversational engine (fallback) written in student peer language ("bahasa teman siswa").
+ * Used when Gemini API key is offline or unavailable.
+ */
+function generateLocalReplyFallback(message: string, studentInfo: any) {
+  const msg = message.toLowerCase();
+  const nama = studentInfo?.nama || "Sobat";
+  
+  if (msg.includes("halo") || msg.includes("hi") || msg.includes("hey") || msg.includes("p")) {
+    return `Halo juga ${nama}! 👋 Kenalin, nama gue Teman CurhatKu, temen curhat lo yang siap nemenin lo kapan aja. Gue di sini tulus pengen dengerin lo. Ada cerita seru, pusing, atau sebel apa nih hari ini di asrama/sekolah? Tumpahin aja ke gue, santai aja kali gak usah kaku!`;
+  }
+  if (msg.includes("asrama") || msg.includes("kamar") || msg.includes("temen") || msg.includes("rekan")) {
+    return `Hmm... urusan kamar asrama emang kadang bikin pusing ya, wkwkwk. Tinggal sekamar bareng temen-temen yang wataknya beda-beda emang butuh kesabaran ekstra. Tapi aslinya seru kan kalau dipikir-pikir? Jenuh atau sebel itu wajar banget kok. Coba deh nanti kalau suasana lagi santai, ajak ngobrol ringan atau jajan sore bareng di kantin. Oiya, lo selalu bisa cerita ke ustadz pendamping juga kalau ada masalah yang berat. Semangat ya, jaga terus kekompakan kamar!`;
+  }
+  if (msg.includes("kangen") || msg.includes("rumah") || msg.includes("orang tua") || msg.includes("ibu") || msg.includes("ayah") || msg.includes("pulang") || msg.includes("homesick")) {
+    return `Aduh... rasa kangen rumah (homesick) emang beneran bikin sendu ya, ${nama}... 🥺 Gue paham banget rasanya jauh dari pelukan Ibu, masakan rumah yang anget, atau candaan Ayah. Tapi inget ya, lo di Sekolah Cendekia BAZNAS ini lagi berjuang demi masa depan lo dan buat senyum bangga mereka kelak. Setiap lembar hafalan Qur'an dan ilmu yang lo kejar di sini adalah hadiah terindah buat orang tua lo di rumah. Doakan mereka sehabis shalat ya. Sukses lo adalah kebahagiaan terbesar mereka!`;
+  }
+  if (msg.includes("stres") || msg.includes("pusing") || msg.includes("lelah") || msg.includes("tugas") || msg.includes("nilai") || msg.includes("pelajaran") || msg.includes("belajar")) {
+    return `Waduh, lagi numpuk banget ya tugas-tugas atau materi pelajaran yang bikin lo pusing? Tarik napas dalem-dalem dulu yuk..., lepasin perlahan... 🧘‍♂️ Tenang, itu normal banget kok! Di SCB emang kegiatannya padet banget. Tips dari gue nih: jangan dipikirin semua sekaligus nanti malah burn out. Cicil pelan-pelan pakai teknik Pomodoro: belajar fokus 25 menit, terus istirahat 5 menit buat regangkan badan. Jangan lupa tidur teratur dan jaga kesehatan ya. Gue yakin lo anak hebat, pasti bisa melewatinya!`;
+  }
+  if (msg.includes("pacar") || msg.includes("suka") || msg.includes("cinta") || msg.includes("doi")) {
+    return `Ehem... urusan kesukaan atau doi emang bikin hati deg-degan mulu ya, hihihi. Tapi inget ya sahabat, kita kan di asrama ini lagi ditempa untuk fokus meraih impian dulu. Mengagumi kebaikan orang lain itu fitrah yang wajar banget kok, tapi alangkah indahnya kalau perasaan itu disimpan rapi dulu di dalam doa, dan dijadiin motivasi tambahan buat rajin belajar serta beribadah. Fokus sukseskan diri lo dulu ya, nanti masa depan indah bakal menyertaimu!`;
+  }
+  if (msg.includes("hafalan") || msg.includes("quran") || msg.includes("juz") || msg.includes("hadits") || msg.includes("murajaah") || msg.includes("setoran")) {
+    return `Wah, lo lagi dapet tantangan di setoran hafalan Qur'an atau 100 Hadits nih? Semangat ya, ${nama}! Menjaga kalam Allah dan sabda Rasulullah itu emang butuh perjuangan, hati yang ikhlas, dan fokus tinggi. Kalau ngerasa agak seret menghafal, coba muraja'ah di sela-sela waktu subuh yang sejuk atau pas malam hari setelah shalat sunnah. Jangan cepet nyerah ya calom hafidz andalan umat! Setiap waktu yang lo habiskan bersama Al-Qur'an itu berkah luar biasa.`;
+  }
+  
+  return `Wah gue seneng deh lo mau cerita sejujur ini ke gue, ${nama}. Hidup emang kadang ngasih kita banyak tantangan ya, tapi justru itu yang bikin kita makin dewasa dan bijaksana. Sebagai sahabat terbaik lo, gue bangga lo sekuat ini menjalaninya di asrama. Ada hal lain lagi gak yang mau lo tumpahin atau sekadar lo ceritain biar plong? Gue siap nemenin curhat santai dan asyik lo kapan aja!`;
 }
 
 startServer();

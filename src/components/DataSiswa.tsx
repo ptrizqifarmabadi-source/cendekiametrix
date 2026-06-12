@@ -5,7 +5,7 @@
 
 import React from "react";
 import { StudentProfile } from "../types";
-import { User, Shield, GraduationCap, Award, Heart, Users2, MapPin } from "lucide-react";
+import { User, Shield, GraduationCap, Award, Heart, Users2, MapPin, Upload, Camera } from "lucide-react";
 
 interface DataSiswaProps {
   jenjang: "SMP" | "SMA";
@@ -85,82 +85,131 @@ export default function DataSiswa({ jenjang, profile, onChange, onNext }: DataSi
             <span>Identitas Pokok Peserta Tes</span>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div>
-              <label className="block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 font-mono">
-                Nama Lengkap <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={profile.nama}
-                onChange={(e) => handleChange("nama", e.target.value)}
-                placeholder="Rahmat Hidayatullah"
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 font-mono">
-                NISN <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={profile.nisn}
-                onChange={(e) => handleChange("nisn", e.target.value.replace(/\D/g, ""))}
-                placeholder="0071234567"
-                maxLength={10}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 font-mono">
-                Jenjang <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={activeJenjang}
-                disabled={true}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-150/80 dark:bg-gray-950 text-gray-500 dark:text-gray-400 cursor-not-allowed transition-colors"
-                title="Jenjang dikunci sesuai pilihan awal masuk Anda."
-              >
-                <option value="SMP">SMP</option>
-                <option value="SMA">SMA</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 font-mono">
-                Kelas <span className="text-red-500">*</span>
-              </label>
-              {activeJenjang === "SMP" ? (
-                <select
-                  value={profile.kelas}
-                  onChange={(e) => handleClassChange(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
-                >
-                  <option value="Kelas 7 Ikhwan">Kelas 7 Ikhwan</option>
-                  <option value="Kelas 7 Akhwat">Kelas 7 Akhwat</option>
-                  <option value="Kelas 8 Ikhwan">Kelas 8 Ikhwan</option>
-                  <option value="Kelas 8 Akhwat">Kelas 8 Akhwat</option>
-                  <option value="Kelas 9 Ikhwan">Kelas 9 Ikhwan</option>
-                  <option value="Kelas 9 Akhwat">Kelas 9 Akhwat</option>
-                </select>
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Foto Upload Column */}
+            <div className="flex flex-col items-center justify-center p-4 border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-gray-950/30 col-span-1">
+              <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest font-mono mb-2 flex items-center gap-1">
+                <Camera className="h-3.5 w-3.5 text-blue-500" />
+                FOTO SISWA
+              </span>
+              
+              {profile.foto ? (
+                <div className="relative group w-32 h-40 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900">
+                  <img src={profile.foto} alt="Foto siswa" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => handleChange("foto", "")}
+                    className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-semibold cursor-pointer"
+                  >
+                    Hapus / Ganti
+                  </button>
+                </div>
               ) : (
-                <select
-                  value={profile.kelas}
-                  onChange={(e) => handleClassChange(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
-                >
-                  <option value="Kelas 10 Ikhwan">Kelas 10 Ikhwan</option>
-                  <option value="Kelas 10 Akhwat">Kelas 10 Akhwat</option>
-                  <option value="Kelas 11 Ikhwan">Kelas 11 Ikhwan</option>
-                  <option value="Kelas 11 Akhwat">Kelas 11 Akhwat</option>
-                  <option value="Kelas 12 Ikhwan">Kelas 12 Ikhwan</option>
-                  <option value="Kelas 12 Akhwat">Kelas 12 Akhwat</option>
-                </select>
+                <label className="w-32 h-40 border-2 border-dashed border-gray-200 dark:border-gray-800 hover:border-blue-500 dark:hover:border-blue-400 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-colors p-3 text-center bg-white dark:bg-gray-900 group">
+                  <Upload className="h-6 w-6 text-gray-405 text-gray-400 group-hover:text-blue-500 transition-colors mb-2" />
+                  <span className="text-[10px] text-gray-500 dark:text-gray-405 font-mono font-medium leading-tight">
+                    Unggah Pasfoto Siswa (PNG/JPG)
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          handleChange("foto", reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="hidden"
+                  />
+                </label>
               )}
+              <span className="text-[9px] text-gray-400 dark:text-gray-500 text-center mt-2 leading-relaxed">
+                Akan otomatis tercetak pada dokumen biodata & laporan kelulusan.
+              </span>
+            </div>
+
+            {/* Input Columns */}
+            <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 font-mono">
+                  Nama Lengkap <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={profile.nama}
+                  onChange={(e) => handleChange("nama", e.target.value)}
+                  placeholder="Rahmat Hidayatullah"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 font-mono">
+                  NISN <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={profile.nisn}
+                  onChange={(e) => handleChange("nisn", e.target.value.replace(/\D/g, ""))}
+                  placeholder="0071234567"
+                  maxLength={10}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 font-mono">
+                  Jenjang <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={activeJenjang}
+                  disabled={true}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-150/80 dark:bg-gray-950 text-gray-500 dark:text-gray-400 cursor-not-allowed transition-colors"
+                  title="Jenjang dikunci sesuai pilihan awal masuk Anda."
+                >
+                  <option value="SMP">SMP</option>
+                  <option value="SMA">SMA</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 font-mono">
+                  Kelas <span className="text-red-500">*</span>
+                </label>
+                {activeJenjang === "SMP" ? (
+                  <select
+                    value={profile.kelas}
+                    onChange={(e) => handleClassChange(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                  >
+                    <option value="Kelas 7 Ikhwan">Kelas 7 Ikhwan</option>
+                    <option value="Kelas 7 Akhwat">Kelas 7 Akhwat</option>
+                    <option value="Kelas 8 Ikhwan">Kelas 8 Ikhwan</option>
+                    <option value="Kelas 8 Akhwat">Kelas 8 Akhwat</option>
+                    <option value="Kelas 9 Ikhwan">Kelas 9 Ikhwan</option>
+                    <option value="Kelas 9 Akhwat">Kelas 9 Akhwat</option>
+                  </select>
+                ) : (
+                  <select
+                    value={profile.kelas}
+                    onChange={(e) => handleClassChange(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                  >
+                    <option value="Kelas 10 Ikhwan">Kelas 10 Ikhwan</option>
+                    <option value="Kelas 10 Akhwat">Kelas 10 Akhwat</option>
+                    <option value="Kelas 11 Ikhwan">Kelas 11 Ikhwan</option>
+                    <option value="Kelas 11 Akhwat">Kelas 11 Akhwat</option>
+                    <option value="Kelas 12 Ikhwan">Kelas 12 Ikhwan</option>
+                    <option value="Kelas 12 Akhwat">Kelas 12 Akhwat</option>
+                  </select>
+                )}
+              </div>
             </div>
           </div>
         </div>

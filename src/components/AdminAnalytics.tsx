@@ -118,6 +118,7 @@ interface CompletedTestRecord {
   rekomendasiJurusan: string[];
   tanggalTes: string;
   isUserAdded?: boolean;
+  portfolio?: any;
 }
 
 const DEFAULT_RECORDS: CompletedTestRecord[] = [];
@@ -130,6 +131,70 @@ export default function AdminAnalytics({ userRole }: AdminAnalyticsProps) {
   const [records, setRecords] = useState<CompletedTestRecord[]>([]);
   const [activeClassFilter, setActiveClassFilter] = useState<string>("All");
   const [syncKey, setSyncKey] = useState<number>(0);
+  const [chatRecords, setChatRecords] = useState<any[]>([]);
+  const [selectedChat, setSelectedChat] = useState<any | null>(null);
+
+  // Direct physical BK Messaging and summarization states
+  const [directMessages, setDirectMessages] = useState<any[]>([]);
+  const [replyTexts, setReplyTexts] = useState<{ [msgId: string]: string }>({});
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [summariesCache, setSummariesCache] = useState<{ [nisn: string]: { summary: string; actionItems: string[] } }>({});
+
+  // Load counseling chats from local storage
+  const loadChats = () => {
+    const raw = localStorage.getItem("sipetakuliah_counseling_chats");
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        let filtered = parsed;
+        if (userRole === "bk_smp") {
+          filtered = parsed.filter((c: any) => c.jenjang === "SMP");
+        } else if (userRole === "bk_sma") {
+          filtered = parsed.filter((c: any) => c.jenjang === "SMA");
+        }
+        setChatRecords(filtered);
+      } catch (e) {
+        setChatRecords([]);
+      }
+    } else {
+      setChatRecords([]);
+    }
+  };
+
+  // Load direct BK messages
+  const loadDirectMessages = () => {
+    const raw = localStorage.getItem("sipetakuliah_direct_bk_messages");
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        let filtered = parsed;
+        if (userRole === "bk_smp") {
+          filtered = parsed.filter((m: any) => m.jenjang === "SMP");
+        } else if (userRole === "bk_sma") {
+          filtered = parsed.filter((m: any) => m.jenjang === "SMA");
+        }
+        setDirectMessages(filtered);
+      } catch (e) {
+        setDirectMessages([]);
+      }
+    } else {
+      setDirectMessages([]);
+    }
+  };
+
+  // Load evaluation summaries cache
+  const loadSummaries = () => {
+    const raw = localStorage.getItem("sipetakuliah_counseling_summaries");
+    if (raw) {
+      try {
+        setSummariesCache(JSON.parse(raw));
+      } catch (e) {
+        setSummariesCache({});
+      }
+    } else {
+      setSummariesCache({});
+    }
+  };
 
   // Load records from local storage or set defaults
   const loadRecords = () => {
@@ -162,21 +227,121 @@ export default function AdminAnalytics({ userRole }: AdminAnalyticsProps) {
 
   useEffect(() => {
     loadRecords();
+    loadChats();
+    loadDirectMessages();
+    loadSummaries();
     
     // Listen to localstorage changes to synchronize live
     const handleStorageChange = () => {
       loadRecords();
+      loadChats();
+      loadDirectMessages();
+      loadSummaries();
       setSyncKey((prev) => prev + 1);
     };
     
     window.addEventListener("storage", handleStorageChange);
     // Periodically sync
-    const interval = setInterval(loadRecords, 2000);
+    const interval = setInterval(() => {
+      loadRecords();
+      loadChats();
+      loadDirectMessages();
+    }, 2000);
     return () => {
       window.removeEventListener("storage", handleStorageChange);
       clearInterval(interval);
     };
   }, []);
+
+  const handleSummarizeChat = async (studentNisn: string) => {
+    if (!selectedChat || isSummarizing) return;
+    setIsSummarizing(true);
+    try {
+      const response = await fetch("/api/summarize-dialog", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          history: selectedChat.messages,
+          studentInfo: {
+            nama: selectedChat.nama,
+            nisn: selectedChat.nisn,
+            kelas: selectedChat.kelas,
+            jenjang: selectedChat.jenjang
+          }
+        })
+      });
+      const data = await response.json();
+      
+      const updatedCache = {
+        ...summariesCache,
+        [studentNisn]: {
+          summary: data.summary || "Transkrip dialog curhat ini sangat singkat. Siswa terlihat menceritakan kondisinya secara berkala.",
+          actionItems: data.actionItems || [
+            "Ajak murid berdiskusi santai di sela-sela waktu asrama.",
+            "Lakukan validasi emosi dan berika solusi akomodatif.",
+            "Konsolidasikan ke pembina asrama santri."
+          ]
+        }
+      };
+      
+      localStorage.setItem("sipetakuliah_counseling_summaries", JSON.stringify(updatedCache));
+      setSummariesCache(updatedCache);
+    } catch (err) {
+      console.error("Error summarizing chat:", err);
+    } finally {
+      setIsSummarizing(false);
+    }
+  };
+
+  const handleReplyDirectMessage = (msgId: string) => {
+    const replyText = replyTexts[msgId];
+    if (!replyText || !replyText.trim()) return;
+
+    const raw = localStorage.getItem("sipetakuliah_direct_bk_messages");
+    if (!raw) return;
+
+    try {
+      const allMsgs = JSON.parse(raw);
+      const updated = allMsgs.map((m: any) => {
+        if (m.id === msgId) {
+          return {
+            ...m,
+            status: "Sudah Ditanggapi",
+            response: {
+              responseText: replyText.trim(),
+              repliedBy: userRole === "bk_smp" ? "Guru BK SMP" : userRole === "bk_sma" ? "Guru BK SMA" : "Admin BK SCB",
+              timestamp: new Date().toLocaleString("id-ID", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit"
+              })
+            }
+          };
+        }
+        return m;
+      });
+
+      localStorage.setItem("sipetakuliah_direct_bk_messages", JSON.stringify(updated));
+      setReplyTexts(prev => ({ ...prev, [msgId]: "" }));
+      loadDirectMessages();
+    } catch (e) {
+      console.error("Error replying to direct message:", e);
+    }
+  };
+
+  const handleDeleteDirectMessage = (msgId: string) => {
+    if (!window.confirm("Apakah Anda yakin ingin menghapus pesan kesiswaan ini dari basis data?")) return;
+    const raw = localStorage.getItem("sipetakuliah_direct_bk_messages");
+    if (!raw) return;
+    try {
+      const all = JSON.parse(raw);
+      const filtered = all.filter((m: any) => m.id !== msgId);
+      localStorage.setItem("sipetakuliah_direct_bk_messages", JSON.stringify(filtered));
+      loadDirectMessages();
+    } catch (e) {}
+  };
 
   // Filter records based on selected class
   const filteredRecords = records.filter(
@@ -766,7 +931,418 @@ export default function AdminAnalytics({ userRole }: AdminAnalyticsProps) {
 
       </div>
 
-      {/* 5. Rekap Master Database Table directly below infographics */}
+      {/* 4.5. Laporan Konsultasi Teman CurhatKu (AI) */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-sm space-y-6 no-print">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+          <div className="space-y-1">
+            <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 font-mono uppercase tracking-wider">
+              Bimbingan Konseling Mandiri
+            </div>
+            <h3 className="text-lg font-black text-slate-905 dark:text-white font-display flex items-center gap-2">
+              <span className="p-1 px-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 text-xs">AI</span>
+              Riwayat Konsultasi Teman CurhatKu
+            </h3>
+            <p className="text-xs text-slate-500">
+              Hasil curhatan mandiri santri dengan asisten AI. Menggunakan gaya bahasa gaul/teman sebaya guna mendeteksi kecemasan, rindu rumah, motivasi menghafal, dan dinamika asrama.
+            </p>
+          </div>
+
+          {chatRecords.length > 0 && (
+            <button
+              onClick={() => {
+                if (window.confirm("Apakah anda yakin ingin menghapus semua rekam log chat konsultasi AI?")) {
+                  localStorage.removeItem("sipetakuliah_counseling_chats");
+                  setChatRecords([]);
+                  setSelectedChat(null);
+                }
+              }}
+              className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 rounded-xl text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer"
+            >
+              KOSONGKAN SEMUA CHAT AI
+            </button>
+          )}
+        </div>
+
+        {chatRecords.length === 0 ? (
+          <div className="text-center p-8 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800/80">
+            <span className="text-3xl">💬</span>
+            <h4 className="text-xs font-bold text-slate-700 dark:text-slate-350 mt-2">Belum Ada Riwayat Konsultasi AI</h4>
+            <p className="text-[11px] text-slate-450 max-w-md mx-auto mt-1 leading-relaxed">
+              Saat santri masuk melalui opsi &ldquo;Konsultasi BK Mandiri (Teman CurhatKu)&rdquo; dan mengirimkan pesan curhat pertama mereka, riwayat pesan &amp; transkrip dialog konseling akan langsung tersaji nyata di panel ini secara langsung.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* List Table of students who chatted */}
+            <div className="lg:col-span-6 space-y-3">
+              <span className="text-[11px] font-bold text-slate-400 font-mono uppercase tracking-wider block">
+                Daftar Sesi Aktif ({chatRecords.length} Santri)
+              </span>
+
+              <div className="border border-slate-150 dark:border-slate-800/80 rounded-2xl overflow-hidden bg-slate-50/20 dark:bg-slate-950/20">
+                <table className="w-full text-xs text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-950 text-slate-450 border-b border-slate-150 dark:border-slate-800 font-mono text-[9px] uppercase tracking-wider">
+                      <th className="p-3">Siswa</th>
+                      <th className="p-3">Jenjang / Kelas</th>
+                      <th className="p-3">Pesan</th>
+                      <th className="p-3 text-right">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                    {chatRecords.map((item, idx) => (
+                      <tr 
+                        key={idx} 
+                        className={`hover:bg-slate-50/65 dark:hover:bg-slate-850/40 transition-colors ${
+                          selectedChat?.nisn === item.nisn ? "bg-emerald-500/5 dark:bg-emerald-500/10" : ""
+                        }`}
+                      >
+                        <td className="p-3">
+                          <div className="font-bold text-slate-805 dark:text-slate-100 leading-tight">
+                            {item.nama}
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                            NISN: {item.nisn}
+                          </div>
+                        </td>
+                        <td className="p-3 font-medium text-slate-650 dark:text-slate-355 font-mono">
+                          <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-md font-bold text-[9px] mr-1.5 text-slate-705 dark:text-slate-300">
+                            {item.jenjang}
+                          </span>
+                          {item.kelas}
+                        </td>
+                        <td className="p-3 font-mono text-[10px] text-slate-400">
+                          {item.messages ? item.messages.length - 1 : 0} curhatan
+                        </td>
+                        <td className="p-3 text-right">
+                          <button
+                            onClick={() => setSelectedChat(item)}
+                            className={`px-3 py-1.5 rounded-xl text-[10px] font-bold cursor-pointer transition-all ${
+                              selectedChat?.nisn === item.nisn
+                                ? "bg-emerald-600 text-white shadow shadow-emerald-500/15"
+                                : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-805 dark:text-slate-250"
+                            }`}
+                          >
+                            LIHAT LOG DIALOG
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* View dialogue transcript */}
+            <div className="lg:col-span-6 space-y-3">
+              <span className="text-[11px] font-bold text-slate-400 font-mono uppercase tracking-wider block">
+                Transkrip Obrolan Lengkap
+              </span>
+
+              {selectedChat ? (
+                <div className="space-y-4">
+                  <div className="border border-slate-150 dark:border-slate-800 rounded-2xl bg-slate-50/25 dark:bg-slate-900/40 p-4 space-y-4 flex flex-col h-[320.5px]">
+                  {/* Chat Info Header */}
+                  <div className="pb-3 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-transparent">
+                    <div>
+                      <h4 className="text-xs font-black text-slate-900 dark:text-white">
+                        Curhat {selectedChat.nama}
+                      </h4>
+                      <div className="text-[9.5px] text-slate-400 font-mono mt-0.5 flex gap-2">
+                        <span>Layanan: {selectedChat.jenjang}</span>
+                        <span>•</span>
+                        <span>Aktif: {selectedChat.timestamp}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        // Delete individual student chat logs
+                        if (window.confirm(`Hapus seluruh riwayat chat miliki ${selectedChat.nama}?`)) {
+                          const raw = localStorage.getItem("sipetakuliah_counseling_chats");
+                          if (raw) {
+                            try {
+                              const parsed = JSON.parse(raw);
+                              const cleaned = parsed.filter((c: any) => c.nisn !== selectedChat.nisn);
+                              localStorage.setItem("sipetakuliah_counseling_chats", JSON.stringify(cleaned));
+                              setChatRecords(cleaned);
+                              setSelectedChat(null);
+                            } catch (e) {}
+                          }
+                        }
+                      }}
+                      className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-500 cursor-pointer"
+                      title="Hapus Transkrip"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  {/* Bubble logs conveyor belt */}
+                  <div className="flex-1 overflow-y-auto space-y-3.5 pr-1 scrollbar-thin scrollbar-thumb-slate-200">
+                    {selectedChat.messages?.map((msg: any, mIdx: number) => {
+                      const isAi = msg.sender === "ai";
+                      return (
+                        <div key={mIdx} className={`max-w-[85%] space-y-0.5 ${isAi ? "mr-auto" : "ml-auto text-right"}`}>
+                          <span className="text-[8.5px] font-mono text-slate-400">
+                            {isAi ? "Teman CurhatKu (AI)" : selectedChat.nama} • {msg.timestamp}
+                          </span>
+                          <div className={`p-2.5 rounded-2xl shadow-sm text-[11px] leading-relaxed whitespace-pre-wrap text-left ${
+                            isAi 
+                              ? "bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-205 rounded-tl-none" 
+                              : "bg-emerald-600 text-white rounded-tr-none font-medium"
+                          }`}>
+                            {msg.text?.replace(/\*\*(.*?)\*\*/g, "$1")}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* AI Evaluation Summary Card */}
+                <div className="bg-slate-50 dark:bg-slate-950 border border-slate-150 dark:border-slate-800 rounded-3xl p-4.5 space-y-3.5 shadow-sm">
+                  <div className="flex justify-between items-center pb-2.5 border-b border-slate-200/60 dark:border-slate-805">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 border border-emerald-400/25 rounded-lg text-[9px] font-black font-mono">AI EVALUATION</span>
+                      <h4 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-tight">Kesimpulan Dialog &amp; Solusi BK</h4>
+                    </div>
+                    {summariesCache[selectedChat.nisn] && (
+                      <button
+                        onClick={() => handleSummarizeChat(selectedChat.nisn)}
+                        disabled={isSummarizing}
+                        className="text-[10px] font-mono font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 dark:bg-emerald-950 px-2 py-1 rounded-lg border border-emerald-200/30 cursor-pointer"
+                      >
+                        {isSummarizing ? "Merespon..." : "Analisis Ulang ↺"}
+                      </button>
+                    )}
+                  </div>
+
+                  {summariesCache[selectedChat.nisn] ? (
+                    <div className="space-y-3.5">
+                      <div className="space-y-1">
+                        <span className="text-[9px] font-black text-slate-400 font-mono uppercase tracking-wider block">1. Fokus Rangkuman Emosional Siswa</span>
+                        <p className="text-xs text-slate-650 dark:text-slate-300 leading-relaxed font-semibold">
+                          {summariesCache[selectedChat.nisn].summary}
+                        </p>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <span className="text-[9px] font-black text-slate-400 font-mono uppercase tracking-wider block">2. Alur Tindak Lanjut / Solusi Guru BK</span>
+                        <ul className="space-y-1.5">
+                          {summariesCache[selectedChat.nisn].actionItems?.map((act: string, aIdx: number) => (
+                            <li key={aIdx} className="text-[11px] text-slate-600 dark:text-slate-300 flex items-start gap-2 bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-100 dark:border-slate-800/80 font-semibold">
+                              <span className="font-mono text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950 w-5 h-5 rounded-md flex items-center justify-center shrink-0">{aIdx+1}</span>
+                              <span className="flex-1 leading-normal pt-0.5">{act}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center p-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl space-y-3 shadow-inner">
+                      <p className="text-[11px] text-slate-500 leading-relaxed max-w-sm mx-auto">
+                        Belum ada ringkasan hasil dialektika dialog konseling untuk <strong>{selectedChat.nama}</strong>. Klik tombol di bawah untuk mengekstrak intisari via AI.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleSummarizeChat(selectedChat.nisn)}
+                        disabled={isSummarizing}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-750 disabled:bg-slate-200 disabled:text-slate-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer mx-auto font-mono uppercase tracking-wide"
+                      >
+                        {isSummarizing ? (
+                          <>
+                            <div className="w-3 border-2 border-slate-600 border-t-transparent rounded-full animate-spin"></div>
+                            Mengekstrak Obrolan...
+                          </>
+                        ) : (
+                          <>
+                            <span>✨</span>
+                            Analisis & Ringkas Dialog
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              ) : (
+                <div className="h-[320.5px] bg-slate-50/50 dark:bg-slate-950/20 border border-slate-150 dark:border-slate-800 rounded-2xl flex flex-col items-center justify-center p-6 text-center text-slate-400">
+                  <span className="text-2xl">🔍</span>
+                  <p className="text-[11px] font-semibold mt-2">Pilih nama santri di tabel samping kiri</p>
+                  <p className="text-[10px] text-slate-450 max-w-[240px] mt-0.5 leading-relaxed">
+                    Setiap transkrip obrolan, pesan tulus, dan cap waktu curhat mereka dapat anda pantau secara teratur untuk bekal bimbingan klasikal.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 4.6. Kotak Pesan Konseling Masuk Ke Guru BK */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-sm space-y-6 mt-6 no-print">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+          <div className="space-y-1">
+            <div className="text-[10px] font-bold text-red-600 dark:text-red-400 font-mono uppercase tracking-wider">
+              Layanan Pesan Masuk Siswa Realitas
+            </div>
+            <h3 className="text-lg font-black text-slate-905 dark:text-white font-display flex items-center gap-2">
+              <span className="p-1 px-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 text-xs text-semibold">Humas</span>
+              Kotak Masuk Curhat Pribadi Guru BK {userRole === "bk_smp" ? "SMP" : userRole === "bk_sma" ? "SMA" : "SMP & SMA"}
+            </h3>
+            <p className="text-xs text-slate-550 dark:text-slate-400">
+              Daftar pesan rahasia, pengaduan siswa, dan permohonan bimbingan tertulis yang diajukan langsung oleh santri kepada layanan Guru BK sesuai jenjang tingkatnya.
+            </p>
+          </div>
+
+          {directMessages.length > 0 && (
+            <button
+              onClick={() => {
+                if (window.confirm("Apakah Anda yakin ingin menghapus seluruh riwayat pesan masuk Guru BK? Tindakan ini permanen.")) {
+                  localStorage.removeItem("sipetakuliah_direct_bk_messages");
+                  setDirectMessages([]);
+                  alert("Kotak masuk berhasil dibersihkan.");
+                }
+              }}
+              className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 rounded-xl text-[10px] font-bold transition-all cursor-pointer"
+            >
+              KOSONGKAN SEMUA ADUAN BK
+            </button>
+          )}
+        </div>
+
+        {directMessages.length === 0 ? (
+          <div className="text-center p-8 bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+            <span className="text-3xl block mb-2">📬</span>
+            <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">Belum Ada Pesan Masuk</h4>
+            <p className="text-[11px] text-slate-400 max-w-md mx-auto mt-1 leading-relaxed">
+              Ketika ada santri yang membutuhkan pertolongan bimbingan personal tingkat {userRole === "bk_smp" ? "SMP" : userRole === "bk_sma" ? "SMA" : "SMP/SMA"} dan mengirim pesan, keluhan mereka akan langsung masuk, tersaring, dan siap Anda tanggapi secara asinkron di sini.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[...directMessages].reverse().map((msg, index) => {
+              const isNotReplied = msg.status !== "Sudah Ditanggapi";
+              return (
+                <div 
+                  key={index} 
+                  className={`border rounded-2xl p-5 space-y-4 shadow-sm bg-gradient-to-br ${
+                    isNotReplied 
+                      ? "border-amber-200/60 dark:border-amber-900/40 from-amber-500/5 to-white dark:from-amber-950/10 dark:to-slate-900" 
+                      : "border-slate-150 dark:border-slate-800 from-white to-slate-50/20 dark:from-slate-900 dark:to-slate-950"
+                  }`}
+                >
+                  {/* Message Header info */}
+                  <div className="flex justify-between items-start gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <div>
+                      <h4 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                        {msg.nama}
+                        <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-705 dark:text-slate-350 rounded-md font-mono text-[9px] font-extrabold uppercase">
+                          {msg.kelas}
+                        </span>
+                      </h4>
+                      <p className="text-[9.5px] font-mono text-slate-400 mt-1">
+                        NISN: {msg.nisn} • Dikirim: {msg.timestamp}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase font-mono tracking-wider ${
+                        isNotReplied
+                          ? "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-205/30"
+                          : "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-450 border border-emerald-205/30"
+                      }`}>
+                        {msg.status}
+                      </span>
+
+                      <button
+                        onClick={() => handleDeleteDirectMessage(msg.id)}
+                        className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50/10 transition-colors cursor-pointer"
+                        title="Hapus Aduan"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Student confession text */}
+                  <div className="space-y-1 bg-white dark:bg-slate-950 p-3 rounded-xl border border-slate-150/50 dark:border-slate-850">
+                    <div className="flex justify-between items-center text-[8.5px] font-mono text-slate-400 font-black">
+                      <span>KELUHAN KATEGORI: {msg.category?.toUpperCase()}</span>
+                      <span className="text-[9px] text-red-550 dark:text-red-400">RAHASIA BK</span>
+                    </div>
+                    <p className="text-xs text-slate-750 dark:text-slate-300 leading-relaxed font-semibold">
+                      &ldquo; {msg.messageText} &rdquo;
+                    </p>
+                  </div>
+
+                  {/* Reply / Status Actions */}
+                  {isNotReplied ? (
+                    <div className="space-y-2.5 pt-1">
+                      <div className="text-[9.5px] font-mono font-extrabold text-slate-450 uppercase tracking-wider">
+                        Tulis Tanggapan Guru BK:
+                      </div>
+                      <textarea
+                        rows={3}
+                        placeholder="Berikan saran, bimbingan, jadwal tatap muka asmara, atau tanggapan bijak Anda di sini..."
+                        value={replyTexts[msg.id] || ""}
+                        onChange={(e) => setReplyTexts(prev => ({ ...prev, [msg.id]: e.target.value }))}
+                        className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-950 text-slate-850 dark:text-white border border-slate-205 dark:border-slate-800 rounded-xl focus:outline-none focus:border-red-500 leading-relaxed"
+                      ></textarea>
+                      <button
+                        type="button"
+                        onClick={() => handleReplyDirectMessage(msg.id)}
+                        disabled={!replyTexts[msg.id]?.trim()}
+                        className="px-4 py-2 bg-red-650 hover:bg-red-750 disabled:bg-slate-100 dark:disabled:bg-slate-850 disabled:text-slate-400 text-white font-bold text-[10px] rounded-xl transition-all shadow shadow-red-500/10 font-mono tracking-wide uppercase cursor-pointer"
+                      >
+                        Kirim Jawaban Ke Siswa
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-emerald-500/5 dark:bg-emerald-950/10 border border-emerald-150 dark:border-emerald-900/35 rounded-xl space-y-1.5">
+                      <div className="flex justify-between items-center text-[9px] font-bold text-emerald-755 dark:text-emerald-400 font-mono">
+                        <span>BALASAN GURU BK ({msg.response?.repliedBy || "KONSUL BK"})</span>
+                        <span>{msg.response?.timestamp}</span>
+                      </div>
+                      <p className="text-xs text-slate-655 dark:text-slate-250 italic leading-relaxed">
+                        &ldquo; {msg.response?.responseText} &rdquo;
+                      </p>
+                      
+                      {/* Edit existing reply option */}
+                      <button
+                        onClick={() => {
+                          const editTxt = msg.response?.responseText || "";
+                          setReplyTexts(prev => ({ ...prev, [msg.id]: editTxt }));
+                          // Temporarily mark as waiting so they can edit
+                          const raw = localStorage.getItem("sipetakuliah_direct_bk_messages");
+                          if (raw) {
+                            try {
+                              const all = JSON.parse(raw);
+                              const reset = all.map((m: any) => {
+                                if (m.id === msg.id) {
+                                  return { ...m, status: "Menunggu Tanggapan" };
+                                }
+                                return m;
+                              });
+                              localStorage.setItem("sipetakuliah_direct_bk_messages", JSON.stringify(reset));
+                              loadDirectMessages();
+                            } catch (e) {}
+                          }
+                        }}
+                        className="text-[9.5px] font-mono text-slate-400 hover:text-red-500 underline block"
+                      >
+                        Sunting Pembinaan / Tanggapan Ulang
+                      </button>
+                    </div>
+                  )}
+
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
       <div className="space-y-3 mt-8">
         <div className="px-1 space-y-1">
           <h3 className="text-lg font-black text-slate-905 dark:text-white font-display">
