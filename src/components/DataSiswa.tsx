@@ -5,7 +5,7 @@
 
 import React from "react";
 import { StudentProfile } from "../types";
-import { User, Shield, GraduationCap, Award, Heart, Users2, MapPin, Upload, Camera } from "lucide-react";
+import { User, Shield, GraduationCap, Award, Heart, Users2, MapPin, Upload, Camera, Lock, KeyRound } from "lucide-react";
 
 interface DataSiswaProps {
   jenjang: "SMP" | "SMA";
@@ -15,6 +15,38 @@ interface DataSiswaProps {
 }
 
 export default function DataSiswa({ jenjang, profile, onChange, onNext }: DataSiswaProps) {
+  const [newPassword, setNewPassword] = React.useState("");
+  const [confirmPassword, setConfirmPassword] = React.useState("");
+  const [passwordStatus, setPasswordStatus] = React.useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  const customPasswordKey = `student_password_of_${profile.nisn}`;
+  const [currentPassword, setCurrentPassword] = React.useState(() => {
+    return localStorage.getItem(customPasswordKey) || profile.nisn;
+  });
+
+  const handleUpdatePassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword.trim()) {
+      setPasswordStatus({ type: "error", message: "Password baru tidak boleh kosong!" });
+      return;
+    }
+    if (newPassword.length < 4) {
+      setPasswordStatus({ type: "error", message: "Password minimal terdiri dari 4 karakter demi keamanan!" });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordStatus({ type: "error", message: "Konfirmasi password baru tidak cocok!" });
+      return;
+    }
+
+    localStorage.setItem(customPasswordKey, newPassword.trim());
+    setCurrentPassword(newPassword.trim());
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordStatus({ type: "success", message: "Sip! Password keamanan Anda berhasil diperbarui!" });
+    setTimeout(() => setPasswordStatus(null), 4000);
+  };
+
   const handleChange = (field: keyof StudentProfile, value: string) => {
     onChange({ ...profile, [field]: value });
   };
@@ -323,6 +355,68 @@ export default function DataSiswa({ jenjang, profile, onChange, onNext }: DataSi
                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
               />
             </div>
+          </div>
+        </div>
+
+        {/* Section 4: Keamanan Akun / Edit Password */}
+        <div className="space-y-4 pt-6 border-t border-gray-100 dark:border-gray-850">
+          <div className="flex items-center gap-2 text-rose-600 dark:text-rose-450 font-semibold border-b border-gray-50 dark:border-gray-800 pb-2">
+            <Lock className="h-4 w-4" />
+            <span>Pengaturan Keamanan & Password Akun</span>
+          </div>
+
+          <div className="bg-slate-50 dark:bg-slate-950/40 p-5 rounded-2xl border border-gray-100 dark:border-gray-800/80 space-y-4">
+            <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed font-semibold">
+              Secara bawaan, asrama menetapkan Nomor <strong>NISN ({profile.nisn})</strong> Anda sebagai kunci masuk default. Untuk mencegah orang lain mengakses lembar kuis atau hasil peta akademik & curhat Anda, silakan perbarui password rahasia Anda di bawah ini.
+            </p>
+
+            <form onSubmit={handleUpdatePassword} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+              <div>
+                <label className="block text-[10px] font-extrabold uppercase tracking-wider text-gray-405 dark:text-gray-450 mb-1.5 font-mono">
+                  Password Baru
+                </label>
+                <input
+                  type="password"
+                  placeholder="Ketik password baru..."
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-4 py-2.5 text-xs rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-extrabold uppercase tracking-wider text-gray-405 dark:text-gray-450 mb-1.5 font-mono">
+                  Konfirmasi Password Baru
+                </label>
+                <input
+                  type="password"
+                  placeholder="Ketik ulang password..."
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-4 py-2.5 text-xs rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+
+              <div>
+                <button
+                  type="submit"
+                  className="w-full py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-rose-500/10 cursor-pointer flex items-center justify-center gap-1.5 font-mono uppercase tracking-wide"
+                >
+                  <KeyRound className="h-3.5 w-3.5" />
+                  Simpan Password
+                </button>
+              </div>
+            </form>
+
+            {passwordStatus && (
+              <div className={`p-3 rounded-xl text-xs font-bold leading-normal ${
+                passwordStatus.type === "success" 
+                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" 
+                  : "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20"
+              }`}>
+                {passwordStatus.type === "success" ? "✓ " : "✗ "} {passwordStatus.message}
+              </div>
+            )}
           </div>
         </div>
 

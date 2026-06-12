@@ -182,7 +182,7 @@ export default function App() {
 
   const handleCounselingStudentLogin = (nama: string, nisn: string, jenjang: "SMP" | "SMA") => {
     if (!nama.trim() || !nisn.trim()) {
-      setCounselingLoginError("Nama Lengkap dan NISN wajib diisi!");
+      setCounselingLoginError("Nama Lengkap dan Password (NISN) wajib diisi!");
       return;
     }
     setCounselingLoginError("");
@@ -191,16 +191,27 @@ export default function App() {
     const cleanNama = nama.trim();
 
     const officialMatch = OFFICIAL_STUDENTS.find(
-      s => s.nisn === cleanNisn || s.nama.toLowerCase() === cleanNama.toLowerCase()
+      s => s.nama.toLowerCase() === cleanNama.toLowerCase()
     );
 
     if (!officialMatch) {
-      setCounselingLoginError("Nama dan NISN tidak cocok dengan database kesiswaan Cendekia BAZNAS. Silakan periksa kembali.");
+      setCounselingLoginError("Nama tidak terdaftar di database kesiswaan Cendekia BAZNAS. Silakan hubungi admin BK atau cari nama Anda di saran pencarian.");
       return;
     }
 
     const resolvedNama = officialMatch.nama;
     const resolvedNisn = officialMatch.nisn;
+
+    // Check custom password
+    const customPasswordKey = `student_password_of_${resolvedNisn}`;
+    const savedPassword = localStorage.getItem(customPasswordKey);
+    const expectedPassword = savedPassword || resolvedNisn;
+
+    if (cleanNisn !== expectedPassword) {
+      setCounselingLoginError("Password salah! Silakan masukkan password yang benar (semula adalah NISN Anda).");
+      return;
+    }
+
     const resolvedGender = officialMatch.gender; 
     const initialKelas = jenjang === "SMP" 
       ? `Kelas 7 ${resolvedGender}` 
@@ -355,7 +366,7 @@ export default function App() {
 
   const handleStudentLogin = (nama: string, nisn: string, jenjang: "SMP" | "SMA") => {
     if (!nama.trim() || !nisn.trim()) {
-      setStudentLoginError("Nama Lengkap dan NISN wajib diisi!");
+      setStudentLoginError("Nama Lengkap dan Password (NISN) wajib diisi!");
       return;
     }
     setStudentLoginError("");
@@ -363,19 +374,29 @@ export default function App() {
     const cleanNisn = nisn.trim();
     const cleanNama = nama.trim();
 
-    // Verify against official student database records
+    // Verify against official student database records based on official student list
     const officialMatch = OFFICIAL_STUDENTS.find(
-      s => s.nisn === cleanNisn || s.nama.toLowerCase() === cleanNama.toLowerCase()
+      s => s.nama.toLowerCase() === cleanNama.toLowerCase()
     );
 
     if (!officialMatch) {
-      setStudentLoginError("Nama Lengkap atau NISN tidak terdaftar di database kesiswaan Cendekia BAZNAS. Silakan hubungi admin BK atau cari nama Anda di saran pencarian.");
+      setStudentLoginError("Nama Lengkap tidak terdaftar di database kesiswaan Cendekia BAZNAS. Silakan hubungi admin BK atau cari nama Anda di saran pencarian.");
       return;
     }
 
-    // Align credentials with official spelling and numbers
     const resolvedNama = officialMatch.nama;
     const resolvedNisn = officialMatch.nisn;
+
+    // Password verification: Either the custom set password or the default NISN
+    const customPasswordKey = `student_password_of_${resolvedNisn}`;
+    const savedPassword = localStorage.getItem(customPasswordKey);
+    const expectedPassword = savedPassword || resolvedNisn;
+
+    if (cleanNisn !== expectedPassword) {
+      setStudentLoginError("Password salah! Silakan masukkan password yang tepat (semula adalah NISN Anda).");
+      return;
+    }
+
     const resolvedGender = officialMatch.gender; 
     const initialKelas = jenjang === "SMP" 
       ? `Kelas 7 ${resolvedGender}` 
