@@ -122,7 +122,7 @@ const SMP_DIAGNOSTIC_QUESTIONS = [
     id: 9,
     text: "Ajang kompetisi antarpelajar daerah/nasional mana yang paling ingin kamu ikuti jika didelegasikan sekolah?",
     options: [
-      { id: 1, domain: "ScienceTech", text: "Olimpiade Sains (OSN) Fisika/Matematika, atau turnamen robot cerdas pemilah sampah otomatis tingkat nasional.", ekskul: ["robotik", "kir"] },
+      { id: 1, domain: "ScienceTech", text: "Olimpiade Sains (OSN) Fisika/Matematika, atau turnamen robot cerdas pemilah sampah otomatis tingkat nasional.", ekskul: ["robotik", "kir", "klub_olimpiade"] },
       { id: 2, domain: "Sports", text: "Pekan Olahraga Pelajar Daerah (Popda) futsal, persahabatan basket, tanding pencak silat, atau kejuaraan taktis suku Petanque.", ekskul: ["futsal", "basket", "silat", "petanque"] },
       { id: 3, domain: "Leadership", text: "Lomba Ketangkasan Baris Berbaris (LKBB) kepemimpinan bela negara, atau Jambore Bakti sosial kemanusiaan kepanduan.", ekskul: ["pramuka", "paskibra", "pmr"] },
       { id: 4, domain: "ArtsMusic", text: "Festival Seni FLS2N cipta lagu religi islami, paduan suara kesiswaan, atau melukis seni lukis kaligrafi hiasan dinding.", ekskul: ["seni", "musik"] },
@@ -273,8 +273,8 @@ export default function PrestasiEkskul({ state, onChange, onNext, onPrev, jenjan
       ScienceTech: {
         name: "Sains & Teknologi",
         desc: "Memiliki ketertarikan mendalam pada logika kritis, pemrograman komputer, rekayasa mesin, pemecahan teka-teki taktis, serta riset sains eksakta.",
-        ekskul: ["robotik", "kir"],
-        ekskulLabels: ["Klub Robotika & Pemrograman", "Karya Ilmiah Remaja (KIR)"],
+        ekskul: ["robotik", "kir", "klub_olimpiade"],
+        ekskulLabels: ["Klub Robotika & Pemrograman", "Karya Ilmiah Remaja (KIR)", "Klub Bidang Studi / Fokus Olimpiade Sains (OSN)"],
         icon: BrainCircleIcon,
         color: "bg-blue-500",
         textColor: "text-blue-600 dark:text-blue-400 border-blue-200/50 dark:border-blue-900/30",
@@ -374,7 +374,7 @@ export default function PrestasiEkskul({ state, onChange, onNext, onPrev, jenjan
     // Recommendations Builder
     const rekomendasiPaths: string[] = [];
     const isSportsEkskulActive = state.ekskul.some(e => ["futsal", "basket", "silat", "petanque"].includes(e));
-    const isScienceTechActive = state.ekskul.some(e => ["robotik", "kir"].includes(e));
+    const isScienceTechActive = state.ekskul.some(e => ["robotik", "kir", "klub_olimpiade"].includes(e));
     const isArtsActive = state.ekskul.some(e => ["musik", "seni"].includes(e));
 
     if (totalScore >= 60 || lvl.kabupaten > 0 || lvl.provinsi > 0 || lvl.nasional > 0 || lvl.internasional > 0) {
@@ -385,6 +385,9 @@ export default function PrestasiEkskul({ state, onChange, onNext, onPrev, jenjan
     }
     if (isScienceTechActive) {
       rekomendasiPaths.push("Jalur Prestasi Riset / Karya Ilmiah Remaja (KIR)");
+    }
+    if (state.ekskul.includes("klub_olimpiade")) {
+      rekomendasiPaths.push("Jalur Utama Kompetisi Sains Nasional (KSN / Olimpiade OSN)");
     }
     if (isArtsActive) {
       rekomendasiPaths.push("Beasiswa Bakat Seni & Desain Kreatif");
@@ -414,6 +417,7 @@ export default function PrestasiEkskul({ state, onChange, onNext, onPrev, jenjan
     { value: "silat", label: "Bela diri Merpati Putih / Silat" },
     { value: "robotik", label: "Klub Robotika & Pemrograman" },
     { value: "kir", label: "Karya Ilmiah Remaja (KIR)" },
+    { value: "klub_olimpiade", label: "Klub Bidang Studi / Fokus Olimpiade Sains (OSN)" },
     { value: "musik", label: "Klub Musik & Paduan Suara" },
     { value: "seni", label: "Kreatif Seni Rupa / Kriya Visual" }
   ];

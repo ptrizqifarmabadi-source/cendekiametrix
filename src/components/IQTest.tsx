@@ -19,22 +19,31 @@ export default function IQTest({ state, onChange, onNext, onPrev }: IQTestProps)
   const [activeQIndex, setActiveQIndex] = useState(0);
   const [filterCategory, setFilterCategory] = useState<"all" | "verbal" | "numerical" | "logical" | "spatial">("all");
   const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [localTimeLeft, setLocalTimeLeft] = useState(state.timeLeft);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const activeQuestion = IQ_QUESTIONS[activeQIndex];
 
-  // Start/Pause Timer logic
+  // Keep localTimeLeft in sync if parent resets or loads/restores from storage
   useEffect(() => {
-    if (isTimerRunning && !state.completed && state.timeLeft > 0) {
+    if (state.timeLeft === 3600 || Math.abs(state.timeLeft - localTimeLeft) > 10) {
+      setLocalTimeLeft(state.timeLeft);
+    }
+  }, [state.timeLeft]);
+
+  // Decoupled countdown timer logic running purely on local state
+  useEffect(() => {
+    if (isTimerRunning && !state.completed && localTimeLeft > 0) {
       timerRef.current = setInterval(() => {
-        const nextTime = state.timeLeft - 1;
-        if (nextTime <= 0) {
-          // Auto submit
-          setIsTimerRunning(false);
-          submitExam();
-        } else {
-          onChange({ ...state, timeLeft: nextTime });
-        }
+        setLocalTimeLeft((prev) => {
+          const nextTime = prev - 1;
+          if (nextTime <= 0) {
+            setIsTimerRunning(false);
+            submitExam();
+            return 0;
+          }
+          return nextTime;
+        });
       }, 1000);
     } else {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -43,7 +52,16 @@ export default function IQTest({ state, onChange, onNext, onPrev }: IQTestProps)
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isTimerRunning, state.timeLeft, state.completed]);
+  }, [isTimerRunning, state.completed]);
+
+  // Periodically save localTimeLeft to parent state (every 5 seconds) to prevent losing it on page refresh
+  useEffect(() => {
+    if (state.completed || !isTimerRunning) return;
+    const interval = setInterval(() => {
+      onChange({ ...state, timeLeft: localTimeLeft });
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [localTimeLeft, isTimerRunning, state.completed, onChange, state]);
 
   const handleStartExam = () => {
     setIsTimerRunning(true);
@@ -58,7 +76,8 @@ export default function IQTest({ state, onChange, onNext, onPrev }: IQTestProps)
     }
     
     const nextAnswers = { ...state.answers, [qId]: optionIndex };
-    onChange({ ...state, answers: nextAnswers });
+    // Immediately persist both answers and current timer state to prevent mismatch
+    onChange({ ...state, answers: nextAnswers, timeLeft: localTimeLeft });
 
     // Auto advance to next question if not at the end
     if (activeQIndex < IQ_QUESTIONS.length - 1) {
@@ -99,6 +118,7 @@ export default function IQTest({ state, onChange, onNext, onPrev }: IQTestProps)
     onChange({
       ...state,
       completed: true,
+      timeLeft: localTimeLeft,
       scoreTotal,
       scores: {
         verbal: verbalCount,
@@ -147,7 +167,7 @@ export default function IQTest({ state, onChange, onNext, onPrev }: IQTestProps)
     onChange({
       answers: simulatedAnswers,
       completed: true,
-      timeLeft: state.timeLeft,
+      timeLeft: localTimeLeft,
       scoreTotal,
       scores: {
         verbal: verbalCount,
@@ -160,6 +180,7 @@ export default function IQTest({ state, onChange, onNext, onPrev }: IQTestProps)
   };
 
   const clearAnswers = () => {
+    setLocalTimeLeft(3600);
     onChange({
       answers: {},
       completed: false,

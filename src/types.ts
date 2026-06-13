@@ -47,7 +47,7 @@ export interface AkademikState {
 }
 
 export interface PrestasiEkskulState {
-  ekskul: string[]; // Options: pramuka, petanque, pmr, paskibra, basket, futsal, silat, robotik, kir, musik, seni
+  ekskul: string[]; // Options: pramuka, petanque, pmr, paskibra, basket, futsal, silat, robotik, kir, musik, seni, klub_olimpiade
   tingkatPrestasi: {
     sekolah: number; // count
     kabupaten: number;

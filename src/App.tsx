@@ -1740,7 +1740,7 @@ export default function App() {
           {activeMenu === 5 && (
             <MinatBakat
               state={appState.minatBakat}
-              onChange={(next) => setAppState({ ...appState, minatBakat: next })}
+              onChange={(next) => setAppState((prev) => ({ ...prev, minatBakat: next }))}
               onNext={() => handleNavigate(6)}
               onPrev={() => handleNavigate(4)}
             />
@@ -1749,7 +1749,7 @@ export default function App() {
           {activeMenu === 11 && (
             <GayaBelajar
               state={appState.gayaBelajar}
-              onChange={(next) => setAppState({ ...appState, gayaBelajar: next })}
+              onChange={(next) => setAppState((prev) => ({ ...prev, gayaBelajar: next }))}
               onNext={() => handleNavigate(appState.jenjang === "SMP" ? 4 : 6)}
               onPrev={() => handleNavigate(1)}
             />
@@ -1758,7 +1758,7 @@ export default function App() {
           {activeMenu === 6 && (
             <IQTest
               state={appState.iqTest}
-              onChange={(next) => setAppState({ ...appState, iqTest: next })}
+              onChange={(next) => setAppState((prev) => ({ ...prev, iqTest: next }))}
               onNext={() => handleNavigate(7)}
               onPrev={() => handleNavigate(appState.jenjang === "SMP" ? 4 : 5)}
             />
@@ -1768,7 +1768,7 @@ export default function App() {
             <AIRecommendations
               appState={appState}
               onUpdateRecommendations={(next) => {
-                setAppState({ ...appState, aiRecommendation: next });
+                setAppState((prev) => ({ ...prev, aiRecommendation: next }));
               }}
               onNext={() => handleNavigate(appState.jenjang === "SMP" ? 12 : 8)}
               onPrev={() => handleNavigate(6)}
@@ -1786,7 +1786,7 @@ export default function App() {
           {activeMenu === 12 && (
             <PortofolioMandiri
               state={appState.portfolio}
-              onChange={(next) => setAppState({ ...appState, portfolio: next })}
+              onChange={(next) => setAppState((prev) => ({ ...prev, portfolio: next }))}
               onNext={() => handleNavigate(9)}
               onPrev={() => handleNavigate(appState.jenjang === "SMP" ? 7 : 8)}
               jenjang={appState.jenjang}

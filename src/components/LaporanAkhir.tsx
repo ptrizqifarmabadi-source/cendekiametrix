@@ -728,7 +728,7 @@ export default function LaporanAkhir({ appState, isAdmin, userRole }: LaporanAkh
               const totalQ = Object.keys(smpAnswers).length;
 
               const SMP_DIAGNOSTIC_METADATA = {
-                ScienceTech: { name: "Sains & Teknologi", desc: "Riset Sains Eksakta, Matematika Terapan, Robotika, dan Pemrograman Cerdas", color: "bg-blue-550" },
+                ScienceTech: { name: "Sains & Teknologi", desc: "Riset Sains Eksakta, Klub Bidang Studi (Olimpiade OSN), Robotika, dan Pemrograman Cerdas", color: "bg-blue-550" },
                 Sports: { name: "Olahraga & Fisik", desc: "Ketangkasan Panahan, Futsal, Basket, Silat, dan Bola Besi Petanque", color: "bg-emerald-550" },
                 Leadership: { name: "Kepemimpinan & Sosial", desc: "Baris Berbaris Bela Negara Paskibra, PMR Sukarelawan Medis, dan Pramuka Inti", color: "bg-purple-550" },
                 ArtsMusic: { name: "Seni Kreatif & Musik", desc: "Cipta Kriya Rupa Estetik, Kaligrafi Islami, dan Harmonika Musik Hadroh kesiswaan", color: "bg-rose-550" }
