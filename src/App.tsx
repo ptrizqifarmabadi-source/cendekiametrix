@@ -22,6 +22,95 @@ import PortofolioMandiri from "./components/PortofolioMandiri";
 import TemanCurhatAI from "./components/TemanCurhatAI";
 import { OFFICIAL_STUDENTS } from "./data/studentList";
 
+export interface RegisteredStudent {
+  nama: string;
+  nisn: string; // ID / Username
+  password?: string; // Kata Sandi
+  gender: "Ikhwan" | "Akhwat";
+  angkatan: string;
+  jenjang: "SMP" | "SMA";
+  approved?: boolean;
+}
+
+export const getRegisteredStudents = (): RegisteredStudent[] => {
+  const raw = localStorage.getItem("sipetakuliah_registered_students");
+  let list: RegisteredStudent[] = [];
+  if (raw) {
+    try {
+      list = JSON.parse(raw);
+    } catch (e) {
+      list = [];
+    }
+  }
+
+  // Merge official pre-loaded students that don't exist yet in local storage student list
+  let hasNewMerge = false;
+  const mergedList = [...list];
+  for (const official of OFFICIAL_STUDENTS) {
+    if (!mergedList.some((s) => s.nisn.trim() === official.nisn.trim())) {
+      mergedList.push({
+        nama: official.nama,
+        nisn: official.nisn,
+        password: official.password || official.nisn, // Default password is their NISN
+        gender: official.gender,
+        angkatan: official.angkatan || "Angkatan 5",
+        jenjang: official.jenjang || "SMA",
+        approved: true // Preloaded official students are auto-approved
+      });
+      hasNewMerge = true;
+    }
+  }
+
+  if (hasNewMerge || !raw) {
+    localStorage.setItem("sipetakuliah_registered_students", JSON.stringify(mergedList));
+  }
+
+  return mergedList;
+};
+
+export const recordStudentLoginCount = (student: { nisn: string; nama: string; jenjang: "SMP" | "SMA"; angkatan: string }) => {
+  try {
+    const raw = localStorage.getItem("sipetakuliah_student_login_counts");
+    const counts = raw ? JSON.parse(raw) : {};
+    const key = student.nisn.trim();
+    if (!counts[key]) {
+      counts[key] = {
+        nisn: student.nisn,
+        nama: student.nama,
+        jenjang: student.jenjang,
+        angkatan: student.angkatan,
+        count: 0,
+        lastLogin: ""
+      };
+    }
+    counts[key].count = (counts[key].count || 0) + 1;
+    counts[key].lastLogin = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }) + " WIB";
+    localStorage.setItem("sipetakuliah_student_login_counts", JSON.stringify(counts));
+  } catch (e) {
+    console.error("Failed to record student login count", e);
+  }
+};
+
+export const recordBKLoginCount = (username: string, label: string) => {
+  try {
+    const raw = localStorage.getItem("sipetakuliah_bk_login_counts");
+    const counts = raw ? JSON.parse(raw) : {};
+    if (!counts[username]) {
+      counts[username] = {
+        username: username,
+        label: label,
+        count: 0,
+        lastLogin: ""
+      };
+    }
+    counts[username].count = (counts[username].count || 0) + 1;
+    counts[username].lastLogin = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }) + " WIB";
+    localStorage.setItem("sipetakuliah_bk_login_counts", JSON.stringify(counts));
+  } catch (e) {
+    console.error("Failed to record BK login count", e);
+  }
+};
+
 // Outer layout elements & dashboard widgets
 import {
   ProfileHeader,
@@ -166,58 +255,148 @@ export default function App() {
   const [loginError, setLoginError] = useState("");
 
   // New Student Login stage state management
-  const [studentLoginStage, setStudentLoginStage] = useState<"select_jenjang" | "login_form">("select_jenjang");
+  const [studentLoginStage, setStudentLoginStage] = useState<"select_jenjang" | "login_form" | "register_form">("select_jenjang");
   const [studentNama, setStudentNama] = useState("");
   const [studentNisn, setStudentNisn] = useState("");
+  const [studentPassword, setStudentPassword] = useState("");
   const [studentLoginError, setStudentLoginError] = useState("");
+  const [studentLoginSuccess, setStudentLoginSuccess] = useState("");
   const [studentShowSuggestions, setStudentShowSuggestions] = useState(false);
 
   // Counseling login variables
   const [counselingJenjang, setCounselingJenjang] = useState<"SMP" | "SMA">("SMA");
   const [counselingNama, setCounselingNama] = useState("");
   const [counselingNisn, setCounselingNisn] = useState("");
+  const [counselingPassword, setCounselingPassword] = useState("");
   const [counselingLoginError, setCounselingLoginError] = useState("");
+  const [counselingSuccess, setCounselingSuccess] = useState("");
   const [counselingShowSuggestions, setCounselingShowSuggestions] = useState(false);
-  const [counselingStage, setCounselingStage] = useState<"select_jenjang" | "login_form">("select_jenjang");
+  const [counselingStage, setCounselingStage] = useState<"select_jenjang" | "login_form" | "register_form">("select_jenjang");
 
-  const handleCounselingStudentLogin = (nama: string, nisn: string, jenjang: "SMP" | "SMA") => {
-    if (!nama.trim() || !nisn.trim()) {
-      setCounselingLoginError("Nama Lengkap dan Password (NISN) wajib diisi!");
+  // Registration input variables
+  const [regNama, setRegNama] = useState("");
+  const [regNisn, setRegNisn] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [regGender, setRegGender] = useState<"Ikhwan" | "Akhwat">("Ikhwan");
+  const [regAngkatan, setRegAngkatan] = useState("Angkatan 5");
+
+  const resetAppStateForStudent = (nama: string, nisn: string, gender: "Ikhwan" | "Akhwat", kelas: string, jenjang: "SMP" | "SMA") => {
+    setAppState({
+      ...DEFAULT_STATE,
+      jenjang: jenjang,
+      profile: {
+        ...DEFAULT_STATE.profile,
+        nama: nama,
+        nisn: nisn,
+        jenisKelamin: gender,
+        kelas: kelas
+      },
+      keagamaan: jenjang === "SMP" ? {
+        ...DEFAULT_STATE.keagamaan,
+        nilai: { pai: 0, bahasaArab: 0 }
+      } : DEFAULT_STATE.keagamaan,
+      akademik: jenjang === "SMP" ? {
+        ...DEFAULT_STATE.akademik,
+        nilaiRapor: { matematika: 0, bahasaIndonesia: 0, bahasaInggris: 0, ipa: 0, ips: 0 },
+        simulasiTes: { literasi: 0, numerasi: 0, penalaran: 0 }
+      } : DEFAULT_STATE.akademik
+    });
+  };
+
+  const handleStudentRegister = (
+    nama: string,
+    nisn: string,
+    password_entered: string,
+    gender: "Ikhwan" | "Akhwat",
+    angkatan: string,
+    jenjang: "SMP" | "SMA",
+    isFromCounseling: boolean = false
+  ) => {
+    if (!nama.trim() || !nisn.trim() || !password_entered.trim()) {
+      const errMsg = "Semua kolom pendaftaran wajib diisi!";
+      if (isFromCounseling) setCounselingLoginError(errMsg);
+      else setStudentLoginError(errMsg);
+      return;
+    }
+
+    const list = getRegisteredStudents();
+    if (list.some(s => s.nisn.trim() === nisn.trim())) {
+      const errMsg = `Siswa dengan ID/NISN "${nisn}" sudah terdaftar! Harap gunakan NISN lain atau silakan Masuk/Login.`;
+      if (isFromCounseling) setCounselingLoginError(errMsg);
+      else setStudentLoginError(errMsg);
+      return;
+    }
+
+    const newStudent: RegisteredStudent = {
+      nama: nama.trim(),
+      nisn: nisn.trim(),
+      password: password_entered.trim(),
+      gender,
+      angkatan,
+      jenjang,
+      approved: false // Harus disetujui (di-acc) oleh admin dulu
+    };
+
+    list.push(newStudent);
+    localStorage.setItem("sipetakuliah_registered_students", JSON.stringify(list));
+
+    // Clear registration fields
+    setRegNama("");
+    setRegNisn("");
+    setRegPassword("");
+
+    if (isFromCounseling) {
+      setCounselingLoginError("");
+      setCounselingSuccess("Pendaftaran akun berhasil dikirim! Akun Anda sedang dalam antrean persetujuan (acc) oleh Guru BK sebelum dapat masuk.");
+      setCounselingStage("login_form");
+    } else {
+      setStudentLoginError("");
+      setStudentLoginSuccess("Pendaftaran akun berhasil dikirim! Akun Anda sedang dalam antrean persetujuan (acc) oleh Admin sebelum dapat masuk.");
+      setStudentLoginStage("login_form");
+    }
+  };
+
+  const handleCounselingStudentLogin = (nama: string, password_entered: string, jenjang: "SMP" | "SMA") => {
+    if (!nama.trim() || !password_entered.trim()) {
+      setCounselingLoginError("Nama Lengkap dan Kata Sandi wajib diisi!");
       return;
     }
     setCounselingLoginError("");
+    setCounselingSuccess("");
 
-    const cleanNisn = nisn.trim();
     const cleanNama = nama.trim();
+    const cleanPassword = password_entered.trim();
 
-    const officialMatch = OFFICIAL_STUDENTS.find(
-      s => s.nama.toLowerCase() === cleanNama.toLowerCase()
+    const registeredList = getRegisteredStudents();
+    const officialMatch = registeredList.find(
+      s => s.nama.toLowerCase() === cleanNama.toLowerCase() && s.jenjang === jenjang
     );
 
     if (!officialMatch) {
-      setCounselingLoginError("Nama tidak terdaftar di database kesiswaan Cendekia BAZNAS. Silakan hubungi admin BK atau cari nama Anda di saran pencarian.");
+      setCounselingLoginError("Nama tidak ditemukan untuk jenjang " + jenjang + ". Silakan daftarkan akun baru Anda terlebih dahulu.");
+      return;
+    }
+
+    if (officialMatch.approved === false) {
+      setCounselingLoginError("Akun Anda belum disetujui (di-acc) oleh Guru BK. Harap hubungi Guru BK Anda untuk persetujuan akun.");
+      return;
+    }
+
+    const expectedPassword = officialMatch.password || officialMatch.nisn;
+    if (cleanPassword !== expectedPassword) {
+      setCounselingLoginError("Kata sandi salah! Silakan coba lagi.");
       return;
     }
 
     const resolvedNama = officialMatch.nama;
     const resolvedNisn = officialMatch.nisn;
-
-    // Check custom password
-    const customPasswordKey = `student_password_of_${resolvedNisn}`;
-    const savedPassword = localStorage.getItem(customPasswordKey);
-    const expectedPassword = savedPassword || resolvedNisn;
-
-    if (cleanNisn !== expectedPassword) {
-      setCounselingLoginError("Password salah! Silakan masukkan password yang benar (semula adalah NISN Anda).");
-      return;
-    }
-
     const resolvedGender = officialMatch.gender; 
-    const initialKelas = jenjang === "SMP" 
-      ? `Kelas 7 ${resolvedGender}` 
-      : `Kelas 10 ${resolvedGender}`;
+    const resolvedAngkatan = officialMatch.angkatan;
 
-    const studentStateKey = `${LOCAL_STORAGE_KEY}_student_${resolvedNisn}`;
+    const initialKelas = `${resolvedAngkatan} ${jenjang} ${resolvedGender}`;
+
+    const nameKey = resolvedNama.toLowerCase().trim().replace(/[^a-z0-9]/g, "_");
+    const studentStateKey = `${LOCAL_STORAGE_KEY}_student_${nameKey}`;
     const savedStudentStateObj = localStorage.getItem(studentStateKey);
 
     if (savedStudentStateObj) {
@@ -226,34 +405,24 @@ export default function App() {
         parsed.profile.nama = resolvedNama;
         parsed.profile.nisn = resolvedNisn;
         parsed.profile.jenisKelamin = resolvedGender;
+        if (!parsed.profile.kelas) {
+          parsed.profile.kelas = initialKelas;
+        }
         parsed.jenjang = jenjang;
         setAppState(parsed);
       } catch (e) {
-        setAppState({
-          ...DEFAULT_STATE,
-          jenjang: jenjang,
-          profile: {
-            ...DEFAULT_STATE.profile,
-            nama: resolvedNama,
-            nisn: resolvedNisn,
-            jenisKelamin: resolvedGender,
-            kelas: initialKelas
-          }
-        });
+        resetAppStateForStudent(resolvedNama, resolvedNisn, resolvedGender, initialKelas, jenjang);
       }
     } else {
-      setAppState({
-        ...DEFAULT_STATE,
-        jenjang: jenjang,
-        profile: {
-          ...DEFAULT_STATE.profile,
-          nama: resolvedNama,
-          nisn: resolvedNisn,
-          jenisKelamin: resolvedGender,
-          kelas: initialKelas
-        }
-      });
+      resetAppStateForStudent(resolvedNama, resolvedNisn, resolvedGender, initialKelas, jenjang);
     }
+
+    recordStudentLoginCount({
+      nisn: resolvedNisn,
+      nama: resolvedNama,
+      jenjang: jenjang,
+      angkatan: resolvedAngkatan || "Angkatan 5"
+    });
 
     handleSetRole("peserta_curhat");
   };
@@ -358,52 +527,56 @@ export default function App() {
   useEffect(() => {
     if (appState !== DEFAULT_STATE) {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(appState));
-      if (userRole === "peserta" && appState.profile.nisn) {
-        localStorage.setItem(`${LOCAL_STORAGE_KEY}_student_${appState.profile.nisn.trim()}`, JSON.stringify(appState));
+      if ((userRole === "peserta" || userRole === "peserta_curhat") && appState.profile.nama) {
+        const nameKey = appState.profile.nama.toLowerCase().trim().replace(/[^a-z0-9]/g, "_");
+        localStorage.setItem(`${LOCAL_STORAGE_KEY}_student_${nameKey}`, JSON.stringify(appState));
       }
     }
   }, [appState, userRole]);
 
-  const handleStudentLogin = (nama: string, nisn: string, jenjang: "SMP" | "SMA") => {
-    if (!nama.trim() || !nisn.trim()) {
-      setStudentLoginError("Nama Lengkap dan Password (NISN) wajib diisi!");
+  const handleStudentLogin = (nama: string, password_entered: string, jenjang: "SMP" | "SMA") => {
+    if (!nama.trim() || !password_entered.trim()) {
+      setStudentLoginError("Nama Lengkap dan Kata Sandi wajib diisi!");
       return;
     }
     setStudentLoginError("");
+    setStudentLoginSuccess("");
 
-    const cleanNisn = nisn.trim();
     const cleanNama = nama.trim();
+    const cleanPassword = password_entered.trim();
 
-    // Verify against official student database records based on official student list
-    const officialMatch = OFFICIAL_STUDENTS.find(
-      s => s.nama.toLowerCase() === cleanNama.toLowerCase()
+    // Verify against dynamically registered student database in localStorage
+    const registeredList = getRegisteredStudents();
+    const officialMatch = registeredList.find(
+      s => s.nama.toLowerCase() === cleanNama.toLowerCase() && s.jenjang === jenjang
     );
 
     if (!officialMatch) {
-      setStudentLoginError("Nama Lengkap tidak terdaftar di database kesiswaan Cendekia BAZNAS. Silakan hubungi admin BK atau cari nama Anda di saran pencarian.");
+      setStudentLoginError(`Nama Lengkap tidak terdaftar untuk jenjang ${jenjang}. Silakan lakukan Pendaftaran Akun terlebih dahulu.`);
+      return;
+    }
+
+    if (officialMatch.approved === false) {
+      setStudentLoginError("Akun Anda belum disetujui (di-acc) oleh Admin/Guru BK. Harap hubungi Guru atau Admin BK Anda.");
+      return;
+    }
+
+    const expectedPassword = officialMatch.password || officialMatch.nisn;
+    if (cleanPassword !== expectedPassword) {
+      setStudentLoginError("Kata sandi salah! Silakan coba lagi.");
       return;
     }
 
     const resolvedNama = officialMatch.nama;
     const resolvedNisn = officialMatch.nisn;
-
-    // Password verification: Either the custom set password or the default NISN
-    const customPasswordKey = `student_password_of_${resolvedNisn}`;
-    const savedPassword = localStorage.getItem(customPasswordKey);
-    const expectedPassword = savedPassword || resolvedNisn;
-
-    if (cleanNisn !== expectedPassword) {
-      setStudentLoginError("Password salah! Silakan masukkan password yang tepat (semula adalah NISN Anda).");
-      return;
-    }
-
     const resolvedGender = officialMatch.gender; 
-    const initialKelas = jenjang === "SMP" 
-      ? `Kelas 7 ${resolvedGender}` 
-      : `Kelas 10 ${resolvedGender}`;
+    const resolvedAngkatan = officialMatch.angkatan;
+
+    const initialKelas = `${resolvedAngkatan} ${jenjang} ${resolvedGender}`;
     
-    // Look for a saved state for this specific NISN
-    const studentStateKey = `${LOCAL_STORAGE_KEY}_student_${resolvedNisn}`;
+    // Look for a saved state for this specific Name
+    const nameKey = resolvedNama.toLowerCase().trim().replace(/[^a-z0-9]/g, "_");
+    const studentStateKey = `${LOCAL_STORAGE_KEY}_student_${nameKey}`;
     const savedStudentStateObj = localStorage.getItem(studentStateKey);
     
     if (savedStudentStateObj) {
@@ -413,80 +586,26 @@ export default function App() {
         parsed.profile.nama = resolvedNama;
         parsed.profile.nisn = resolvedNisn;
         parsed.profile.jenisKelamin = resolvedGender;
+        if (!parsed.profile.kelas) {
+          parsed.profile.kelas = initialKelas;
+        }
         parsed.jenjang = jenjang;
         setAppState(parsed);
       } catch (e) {
         // Fallback with clean profile
-        setAppState({
-          ...DEFAULT_STATE,
-          jenjang: jenjang,
-          profile: {
-            ...DEFAULT_STATE.profile,
-            nama: resolvedNama,
-            nisn: resolvedNisn,
-            jenisKelamin: resolvedGender,
-            kelas: initialKelas
-          },
-          keagamaan: jenjang === "SMP" ? {
-            ...DEFAULT_STATE.keagamaan,
-            nilai: {
-              pai: 0,
-              bahasaArab: 0
-            }
-          } : DEFAULT_STATE.keagamaan,
-          akademik: jenjang === "SMP" ? {
-            ...DEFAULT_STATE.akademik,
-            nilaiRapor: {
-              matematika: 0,
-              bahasaIndonesia: 0,
-              bahasaInggris: 0,
-              ipa: 0,
-              ips: 0
-            },
-            simulasiTes: {
-              literasi: 0,
-              numerasi: 0,
-              penalaran: 0
-            }
-          } : DEFAULT_STATE.akademik
-        });
+        resetAppStateForStudent(resolvedNama, resolvedNisn, resolvedGender, initialKelas, jenjang);
       }
     } else {
       // Create a fresh state for the new student login
-      setAppState({
-        ...DEFAULT_STATE,
-        jenjang: jenjang,
-        profile: {
-          ...DEFAULT_STATE.profile,
-          nama: resolvedNama,
-          nisn: resolvedNisn,
-          jenisKelamin: resolvedGender,
-          kelas: initialKelas
-        },
-        keagamaan: jenjang === "SMP" ? {
-          ...DEFAULT_STATE.keagamaan,
-          nilai: {
-            pai: 0,
-            bahasaArab: 0
-          }
-        } : DEFAULT_STATE.keagamaan,
-        akademik: jenjang === "SMP" ? {
-          ...DEFAULT_STATE.akademik,
-          nilaiRapor: {
-            matematika: 0,
-            bahasaIndonesia: 0,
-            bahasaInggris: 0,
-            ipa: 0,
-            ips: 0
-          },
-          simulasiTes: {
-            literasi: 0,
-            numerasi: 0,
-            penalaran: 0
-          }
-        } : DEFAULT_STATE.akademik
-      });
+      resetAppStateForStudent(resolvedNama, resolvedNisn, resolvedGender, initialKelas, jenjang);
     }
+
+    recordStudentLoginCount({
+      nisn: resolvedNisn,
+      nama: resolvedNama,
+      jenjang: jenjang,
+      angkatan: resolvedAngkatan || "Angkatan 5"
+    });
 
     handleSetRole("peserta");
   };
@@ -648,7 +767,7 @@ export default function App() {
                     Lanjut ke Login {welcomeJenjang}
                   </button>
                 </>
-              ) : (
+              ) : studentLoginStage === "login_form" ? (
                 <>
                   <div className="space-y-5">
                     <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-450 flex items-center justify-center shadow-inner">
@@ -663,14 +782,14 @@ export default function App() {
                         </span>
                       </div>
                       <p className="text-xs text-slate-550 dark:text-slate-400 leading-relaxed">
-                        Masukkan Nama Lengkap Anda dan gunakan Nomor NISN Anda sebagai password keamanan untuk memulai.
+                        Masukkan Nama Lengkap Anda beserta Kata Sandi untuk memuat atau memulai asesmen.
                       </p>
                     </div>
 
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
-                        handleStudentLogin(studentNama, studentNisn, welcomeJenjang);
+                        handleStudentLogin(studentNama, studentPassword, welcomeJenjang);
                       }}
                       className="space-y-3.5 pt-3 border-t border-slate-100 dark:border-slate-800"
                     >
@@ -678,7 +797,7 @@ export default function App() {
                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Nama Lengkap Siswa</label>
                         <input
                           type="text"
-                          placeholder="Ketik Nama (Contoh: Abdul, Ahmad...)"
+                          placeholder="Ketik Nama Anda"
                           value={studentNama}
                           onChange={(e) => {
                             setStudentNama(e.target.value);
@@ -692,15 +811,15 @@ export default function App() {
                         {/* Autocomplete Search Suggestions Dropdown */}
                         {studentShowSuggestions && studentNama.trim().length >= 2 && (
                           <div className="absolute left-0 right-0 top-[100%] z-50 mt-1 max-h-48 overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl divide-y divide-slate-100 dark:divide-slate-800">
-                            {OFFICIAL_STUDENTS.filter(s => 
-                              s.nama.toLowerCase().includes(studentNama.toLowerCase())
+                            {getRegisteredStudents().filter(s => 
+                              s.jenjang === welcomeJenjang && s.nama.toLowerCase().includes(studentNama.toLowerCase())
                             ).length === 0 ? (
                               <div className="px-3 py-2 text-xs text-slate-400 italic">
                                 Siswa tidak ditemukan
                               </div>
                             ) : (
-                              OFFICIAL_STUDENTS.filter(s => 
-                                s.nama.toLowerCase().includes(studentNama.toLowerCase())
+                              getRegisteredStudents().filter(s => 
+                                s.jenjang === welcomeJenjang && s.nama.toLowerCase().includes(studentNama.toLowerCase())
                               ).map(s => (
                                 <button
                                   key={s.nisn}
@@ -708,6 +827,7 @@ export default function App() {
                                   onClick={() => {
                                     setStudentNama(s.nama);
                                     setStudentNisn(s.nisn);
+                                    setStudentPassword(s.password || s.nisn);
                                     setStudentShowSuggestions(false);
                                   }}
                                   className="w-full px-3.5 py-2.5 text-left text-xs text-slate-700 dark:text-slate-350 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors flex items-center justify-between cursor-pointer"
@@ -716,12 +836,8 @@ export default function App() {
                                     <span className="font-bold block text-slate-900 dark:text-white">{s.nama}</span>
                                     <span className="text-[10px] text-slate-450 dark:text-slate-500 font-mono">NISN: {s.nisn}</span>
                                   </div>
-                                  <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase font-mono ${
-                                    s.gender === "Ikhwan"
-                                      ? "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400"
-                                      : "bg-pink-50 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400"
-                                  }`}>
-                                    {s.gender}
+                                  <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase font-mono bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400`}>
+                                    {s.angkatan}
                                   </span>
                                 </button>
                               ))
@@ -729,13 +845,14 @@ export default function App() {
                           </div>
                         )}
                       </div>
+
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Password (NISN)</label>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Kata Sandi / Password</label>
                         <input
                           type="password"
-                          placeholder="Masukkan Nomor NISN"
-                          value={studentNisn}
-                          onChange={(e) => setStudentNisn(e.target.value)}
+                          placeholder="Masukkan kata sandi akun"
+                          value={studentPassword}
+                          onChange={(e) => setStudentPassword(e.target.value)}
                           className="w-full px-3 py-2.5 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none text-slate-900 dark:text-white font-mono"
                           required
                         />
@@ -744,6 +861,12 @@ export default function App() {
                       {studentLoginError && (
                         <div className="text-[11px] text-red-650 dark:text-red-400 font-bold font-mono">
                           * {studentLoginError}
+                        </div>
+                      )}
+
+                      {studentLoginSuccess && (
+                        <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-bold text-[11px] border border-emerald-250/20 font-sans leading-relaxed">
+                          ✓ {studentLoginSuccess}
                         </div>
                       )}
 
@@ -763,6 +886,134 @@ export default function App() {
                           className="flex-1.5 py-3 bg-blue-600 hover:bg-blue-750 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer text-center uppercase tracking-wide block font-mono"
                         >
                           Masuk Asesmen
+                        </button>
+                      </div>
+
+                      <div className="text-center pt-3 border-t border-slate-100 dark:border-slate-800">
+                        <span className="text-[11px] text-slate-450">Belum terdaftar? </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRegNama(studentNama);
+                            setStudentLoginStage("register_form");
+                            setStudentLoginError("");
+                          }}
+                          className="text-[11.5px] text-blue-600 hover:text-blue-700 dark:text-blue-400 font-bold hover:underline cursor-pointer"
+                        >
+                          Daftar Akun Baru
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-4">
+                    <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-450 flex items-center justify-center shadow-inner">
+                      <User className="h-6 w-6" />
+                    </div>
+
+                    <div className="space-y-1">
+                      <h3 className="text-lg font-bold text-slate-900 dark:text-white">Daftar Akun Baru {welcomeJenjang}</h3>
+                      <p className="text-xs text-slate-550 dark:text-slate-400">
+                        Isi form di bawah untuk mendaftarkan akun siswa secara mandiri.
+                      </p>
+                    </div>
+
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        handleStudentRegister(regNama, regNisn, regPassword, regGender, regAngkatan, welcomeJenjang, false);
+                      }}
+                      className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800"
+                    >
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide font-mono">Nama Lengkap</label>
+                        <input
+                          type="text"
+                          placeholder="Nama lengkap Anda"
+                          value={regNama}
+                          onChange={(e) => setRegNama(e.target.value)}
+                          className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none text-slate-900 dark:text-white font-medium"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide font-mono">ID / NISN (Username)</label>
+                        <input
+                          type="text"
+                          placeholder="Masukkan ID / NISN unik"
+                          value={regNisn}
+                          onChange={(e) => setRegNisn(e.target.value)}
+                          className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none text-slate-900 dark:text-white font-mono"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide font-mono">Kata Sandi / Password</label>
+                        <input
+                          type="password"
+                          placeholder="Atur kata sandi baru"
+                          value={regPassword}
+                          onChange={(e) => setRegPassword(e.target.value)}
+                          className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none text-slate-900 dark:text-white font-mono"
+                          required
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide font-mono">Kelompok (Gender)</label>
+                          <select
+                            value={regGender}
+                            onChange={(e) => setRegGender(e.target.value as any)}
+                            className="w-full px-2.5 py-2 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl text-slate-900 dark:text-white"
+                          >
+                            <option value="Ikhwan">Ikhwan</option>
+                            <option value="Akhwat">Akhwat</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide font-mono">Angkatan</label>
+                          <select
+                            value={regAngkatan}
+                            onChange={(e) => setRegAngkatan(e.target.value)}
+                            className="w-full px-2.5 py-2 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl text-slate-900 dark:text-white"
+                          >
+                            <option value="Angkatan 5">Angkatan 5</option>
+                            <option value="Angkatan 6">Angkatan 6</option>
+                            <option value="Angkatan 7">Angkatan 7</option>
+                            <option value="Angkatan 8">Angkatan 8</option>
+                            <option value="Angkatan 9">Angkatan 9</option>
+                            <option value="Angkatan 10">Angkatan 10</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {studentLoginError && (
+                        <div className="text-[11px] text-red-650 dark:text-red-400 font-bold font-mono">
+                          * {studentLoginError}
+                        </div>
+                      )}
+
+                      <div className="flex gap-2.5 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setStudentLoginStage("login_form");
+                            setStudentLoginError("");
+                          }}
+                          className="flex-1 py-2.5 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-450 font-bold text-xs rounded-xl hover:bg-slate-50 dark:hover:bg-slate-850"
+                        >
+                          Batal
+                        </button>
+                        <button
+                          type="submit"
+                          className="flex-1.5 py-2.5 bg-blue-650 hover:bg-blue-750 text-white font-bold text-xs rounded-xl"
+                        >
+                          Daftar Akun
                         </button>
                       </div>
                     </form>
@@ -837,7 +1088,7 @@ export default function App() {
                     Lanjut Ke Curhat {counselingJenjang}
                   </button>
                 </>
-              ) : (
+              ) : counselingStage === "login_form" ? (
                 <>
                   <div className="space-y-5">
                     <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-455 flex items-center justify-center shadow-inner">
@@ -852,14 +1103,14 @@ export default function App() {
                         </span>
                       </div>
                       <p className="text-xs text-slate-550 dark:text-slate-400 leading-relaxed font-sans">
-                        Pilih nama Anda, masukkan NISN sebagai PIN keamanan untuk membuka portal obrolan konseling.
+                        Ketik nama lengkap Anda beserta Kata Sandi untuk memulai sesi curhat bimbingan konseling.
                       </p>
                     </div>
 
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
-                        handleCounselingStudentLogin(counselingNama, counselingNisn, counselingJenjang);
+                        handleCounselingStudentLogin(counselingNama, counselingPassword, counselingJenjang);
                       }}
                       className="space-y-3.5 pt-3 border-t border-slate-100 dark:border-slate-800"
                     >
@@ -867,7 +1118,7 @@ export default function App() {
                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Nama Lengkap Siswa</label>
                         <input
                           type="text"
-                          placeholder="Ketik Nama (Contoh: Abdul, Ahmad...)"
+                          placeholder="Masukkan Nama Anda"
                           value={counselingNama}
                           onChange={(e) => {
                             setCounselingNama(e.target.value);
@@ -881,15 +1132,15 @@ export default function App() {
                         {/* Autocomplete Suggestions */}
                         {counselingShowSuggestions && counselingNama.trim().length >= 2 && (
                           <div className="absolute left-0 right-0 top-[100%] z-50 mt-1 max-h-48 overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl divide-y divide-slate-100 dark:divide-slate-800">
-                            {OFFICIAL_STUDENTS.filter(s => 
-                              s.nama.toLowerCase().includes(counselingNama.toLowerCase())
+                            {getRegisteredStudents().filter(s => 
+                              s.jenjang === counselingJenjang && s.nama.toLowerCase().includes(counselingNama.toLowerCase())
                             ).length === 0 ? (
                               <div className="px-3 py-2 text-xs text-slate-400 italic">
                                 Siswa tidak ditemukan
                               </div>
                             ) : (
-                              OFFICIAL_STUDENTS.filter(s => 
-                                s.nama.toLowerCase().includes(counselingNama.toLowerCase())
+                              getRegisteredStudents().filter(s => 
+                                s.jenjang === counselingJenjang && s.nama.toLowerCase().includes(counselingNama.toLowerCase())
                               ).map(s => (
                                 <button
                                   key={s.nisn}
@@ -897,16 +1148,17 @@ export default function App() {
                                   onClick={() => {
                                     setCounselingNama(s.nama);
                                     setCounselingNisn(s.nisn);
+                                    setCounselingPassword(s.password || s.nisn);
                                     setCounselingShowSuggestions(false);
                                   }}
                                   className="w-full px-3.5 py-2.5 text-left text-xs text-slate-700 dark:text-slate-350 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors flex items-center justify-between cursor-pointer"
                                 >
                                   <div>
                                     <span className="font-bold block text-slate-900 dark:text-white">{s.nama}</span>
-                                    <span className="text-[10px] text-slate-450 dark:text-slate-500 font-mono">NISN: {s.nisn}</span>
+                                    <span className="text-[10px] text-slate-450 dark:text-slate-550 font-mono">NISN: {s.nisn}</span>
                                   </div>
-                                  <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase font-mono bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-450`}>
-                                    {s.gender}
+                                  <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase font-mono bg-emerald-50 dark:bg-emerald-955/40 text-emerald-600 dark:text-emerald-400`}>
+                                    {s.angkatan}
                                   </span>
                                 </button>
                               ))
@@ -916,12 +1168,12 @@ export default function App() {
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">PIN Akses (NISN)</label>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Kata Sandi / Password</label>
                         <input
                           type="password"
-                          placeholder="Masukkan PIN Anda"
-                          value={counselingNisn}
-                          onChange={(e) => setCounselingNisn(e.target.value)}
+                          placeholder="Masukkan kata sandi akun"
+                          value={counselingPassword}
+                          onChange={(e) => setCounselingPassword(e.target.value)}
                           className="w-full px-3 py-2.5 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none text-slate-900 dark:text-white font-mono"
                           required
                         />
@@ -933,6 +1185,12 @@ export default function App() {
                         </div>
                       )}
 
+                      {counselingSuccess && (
+                        <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-450 font-bold text-[11px] border border-emerald-250/20 font-sans leading-relaxed">
+                          ✓ {counselingSuccess}
+                        </div>
+                      )}
+
                       <div className="flex gap-2.5 pt-1.5">
                         <button
                           type="button"
@@ -940,7 +1198,7 @@ export default function App() {
                             setCounselingStage("select_jenjang");
                             setCounselingLoginError("");
                           }}
-                          className="flex-1 py-3 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-450 font-bold text-xs rounded-xl hover:bg-slate-50 dark:hover:bg-slate-850 transition-all cursor-pointer text-center uppercase tracking-wide font-mono"
+                          className="flex-1 py-3 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-450 font-bold text-xs rounded-xl hover:bg-slate-50 dark:hover:bg-slate-855 transition-all cursor-pointer text-center uppercase tracking-wide font-mono"
                         >
                           Kembali
                         </button>
@@ -949,6 +1207,134 @@ export default function App() {
                           className="flex-1.5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer text-center uppercase tracking-wide block font-mono"
                         >
                           Mulai Chat
+                        </button>
+                      </div>
+
+                      <div className="text-center pt-3 border-t border-slate-100 dark:border-slate-800">
+                        <span className="text-[11px] text-slate-450 font-medium">Belum terdaftar? </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRegNama(counselingNama);
+                            setCounselingStage("register_form");
+                            setCounselingLoginError("");
+                          }}
+                          className="text-[11.5px] text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 font-bold hover:underline cursor-pointer"
+                        >
+                          Daftar Akun Baru
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-4">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-450 flex items-center justify-center shadow-inner">
+                      <User className="h-6 w-6" />
+                    </div>
+
+                    <div className="space-y-1">
+                      <h3 className="text-lg font-bold text-slate-900 dark:text-white">Daftar Akun BK Baru {counselingJenjang}</h3>
+                      <p className="text-xs text-slate-550 dark:text-slate-400">
+                        Isi form di bawah untuk mendaftarkan akun siswa secara mandiri.
+                      </p>
+                    </div>
+
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        handleStudentRegister(regNama, regNisn, regPassword, regGender, regAngkatan, counselingJenjang, true);
+                      }}
+                      className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800"
+                    >
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide font-mono">Nama Lengkap</label>
+                        <input
+                          type="text"
+                          placeholder="Nama lengkap Anda"
+                          value={regNama}
+                          onChange={(e) => setRegNama(e.target.value)}
+                          className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none text-slate-900 dark:text-white font-medium"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide font-mono">ID / NISN (Username)</label>
+                        <input
+                          type="text"
+                          placeholder="Masukkan ID / NISN unik"
+                          value={regNisn}
+                          onChange={(e) => setRegNisn(e.target.value)}
+                          className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none text-slate-900 dark:text-white font-mono"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide font-mono">Kata Sandi / Password</label>
+                        <input
+                          type="password"
+                          placeholder="Atur kata sandi baru"
+                          value={regPassword}
+                          onChange={(e) => setRegPassword(e.target.value)}
+                          className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none text-slate-900 dark:text-white font-mono"
+                          required
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide font-mono">Kelompok (Gender)</label>
+                          <select
+                            value={regGender}
+                            onChange={(e) => setRegGender(e.target.value as any)}
+                            className="w-full px-2.5 py-2 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl text-slate-900 dark:text-white"
+                          >
+                            <option value="Ikhwan">Ikhwan</option>
+                            <option value="Akhwat">Akhwat</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide font-mono">Angkatan</label>
+                          <select
+                            value={regAngkatan}
+                            onChange={(e) => setRegAngkatan(e.target.value)}
+                            className="w-full px-2.5 py-2 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl text-slate-900 dark:text-white"
+                          >
+                            <option value="Angkatan 5">Angkatan 5</option>
+                            <option value="Angkatan 6">Angkatan 6</option>
+                            <option value="Angkatan 7">Angkatan 7</option>
+                            <option value="Angkatan 8">Angkatan 8</option>
+                            <option value="Angkatan 9">Angkatan 9</option>
+                            <option value="Angkatan 10">Angkatan 10</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {counselingLoginError && (
+                        <div className="text-[11px] text-red-650 dark:text-red-400 font-bold font-mono">
+                          * {counselingLoginError}
+                        </div>
+                      )}
+
+                      <div className="flex gap-2.5 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCounselingStage("login_form");
+                            setCounselingLoginError("");
+                          }}
+                          className="flex-1 py-2.5 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-450 font-bold text-xs rounded-xl hover:bg-slate-50 dark:hover:bg-slate-850"
+                        >
+                          Batal
+                        </button>
+                        <button
+                          type="submit"
+                          className="flex-1.5 py-2.5 bg-emerald-650 hover:bg-emerald-750 text-white font-bold text-xs rounded-xl"
+                        >
+                          Daftar Akun
                         </button>
                       </div>
                     </form>
@@ -981,12 +1367,15 @@ export default function App() {
                     const pwd = adminPassword;
                     if (user === "admin" && pwd === "@Scbjuara1") {
                       setLoginError("");
+                      recordBKLoginCount("admin", "BK SCB (Super Admin)");
                       handleSetRole("admin");
                     } else if (user === "BKSMP" && pwd === "@SMPjuara1") {
                       setLoginError("");
+                      recordBKLoginCount("BKSMP", "Guru BK SMP");
                       handleSetRole("bk_smp");
                     } else if (user === "BKSMA" && pwd === "@SMAjuara1") {
                       setLoginError("");
+                      recordBKLoginCount("BKSMA", "Guru BK SMA");
                       handleSetRole("bk_sma");
                     } else {
                       setLoginError("ID atau Password Admin / Guru BK Salah!");

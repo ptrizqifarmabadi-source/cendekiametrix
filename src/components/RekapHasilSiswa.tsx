@@ -80,7 +80,7 @@ export default function RekapHasilSiswa({ appState, isAdmin, userRole }: RekapHa
     }
 
     // Calculations
-    const isSmp = profile.kelas && (profile.kelas.includes("Kelas 7") || profile.kelas.includes("Kelas 8") || profile.kelas.includes("Kelas 9"));
+    const isSmp = appState.jenjang === "SMP";
 
     const rValues = Object.values(akademik.nilaiRapor);
     const avgRapor = rValues.length ? Math.round(rValues.reduce((a, b) => a + b, 0) / rValues.length) : 0;

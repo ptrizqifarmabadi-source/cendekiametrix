@@ -19,79 +19,22 @@ export default function DataSiswa({ jenjang, profile, onChange, onNext }: DataSi
   const [confirmPassword, setConfirmPassword] = React.useState("");
   const [passwordStatus, setPasswordStatus] = React.useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  const customPasswordKey = `student_password_of_${profile.nisn}`;
-  const [currentPassword, setCurrentPassword] = React.useState(() => {
-    return localStorage.getItem(customPasswordKey) || profile.nisn;
-  });
-
-  const handleUpdatePassword = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPassword.trim()) {
-      setPasswordStatus({ type: "error", message: "Password baru tidak boleh kosong!" });
-      return;
-    }
-    if (newPassword.length < 4) {
-      setPasswordStatus({ type: "error", message: "Password minimal terdiri dari 4 karakter demi keamanan!" });
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setPasswordStatus({ type: "error", message: "Konfirmasi password baru tidak cocok!" });
-      return;
-    }
-
-    localStorage.setItem(customPasswordKey, newPassword.trim());
-    setCurrentPassword(newPassword.trim());
-    setNewPassword("");
-    setConfirmPassword("");
-    setPasswordStatus({ type: "success", message: "Sip! Password keamanan Anda berhasil diperbarui!" });
-    setTimeout(() => setPasswordStatus(null), 4000);
-  };
-
   const handleChange = (field: keyof StudentProfile, value: string) => {
     onChange({ ...profile, [field]: value });
   };
 
   const handleClassChange = (kelasValue: string) => {
-    let newGender = profile.jenisKelamin;
-    if (kelasValue.includes("Ikhwan")) {
-      newGender = "Ikhwan";
-    } else if (kelasValue.includes("Akhwat")) {
-      newGender = "Akhwat";
-    }
-    onChange({ ...profile, kelas: kelasValue, jenisKelamin: newGender });
+    onChange({ ...profile, kelas: kelasValue });
   };
 
   const handleGenderChange = (gender: "Ikhwan" | "Akhwat") => {
-    let newKelas = profile.kelas;
-    const isSmp = jenjang === "SMP";
-    if (isSmp) {
-      if (profile.kelas.includes("Kelas 7")) {
-        newKelas = `Kelas 7 ${gender}`;
-      } else if (profile.kelas.includes("Kelas 8")) {
-        newKelas = `Kelas 8 ${gender}`;
-      } else if (profile.kelas.includes("Kelas 9")) {
-        newKelas = `Kelas 9 ${gender}`;
-      } else {
-        newKelas = `Kelas 7 ${gender}`;
-      }
-    } else {
-      if (profile.kelas.includes("Kelas 10")) {
-        newKelas = `Kelas 10 ${gender}`;
-      } else if (profile.kelas.includes("Kelas 11")) {
-        newKelas = `Kelas 11 ${gender}`;
-      } else if (profile.kelas.includes("Kelas 12")) {
-        newKelas = `Kelas 12 ${gender}`;
-      } else {
-        newKelas = `Kelas 10 ${gender}`;
-      }
-    }
-    onChange({ ...profile, jenisKelamin: gender, kelas: newKelas });
+    onChange({ ...profile, jenisKelamin: gender });
   };
 
   const activeJenjang = jenjang;
 
   const isFormValid = () => {
-    return profile.nama.trim() !== "" && profile.nisn.trim() !== "" && profile.kelas.trim() !== "";
+    return profile.nama.trim() !== "" && profile.kelas.trim() !== "";
   };
 
   return (
@@ -182,21 +125,6 @@ export default function DataSiswa({ jenjang, profile, onChange, onNext }: DataSi
 
               <div>
                 <label className="block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 font-mono">
-                  NISN <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={profile.nisn}
-                  onChange={(e) => handleChange("nisn", e.target.value.replace(/\D/g, ""))}
-                  placeholder="0071234567"
-                  maxLength={10}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 font-mono">
                   Jenjang <span className="text-red-500">*</span>
                 </label>
                 <select
@@ -210,37 +138,23 @@ export default function DataSiswa({ jenjang, profile, onChange, onNext }: DataSi
                 </select>
               </div>
 
-              <div>
+              <div className="md:col-span-2">
                 <label className="block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 font-mono">
-                  Kelas <span className="text-red-500">*</span>
+                  Angkatan Siswa <span className="text-red-500">*</span>
                 </label>
-                {activeJenjang === "SMP" ? (
-                  <select
-                    value={profile.kelas}
-                    onChange={(e) => handleClassChange(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
-                  >
-                    <option value="Kelas 7 Ikhwan">Kelas 7 Ikhwan</option>
-                    <option value="Kelas 7 Akhwat">Kelas 7 Akhwat</option>
-                    <option value="Kelas 8 Ikhwan">Kelas 8 Ikhwan</option>
-                    <option value="Kelas 8 Akhwat">Kelas 8 Akhwat</option>
-                    <option value="Kelas 9 Ikhwan">Kelas 9 Ikhwan</option>
-                    <option value="Kelas 9 Akhwat">Kelas 9 Akhwat</option>
-                  </select>
-                ) : (
-                  <select
-                    value={profile.kelas}
-                    onChange={(e) => handleClassChange(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
-                  >
-                    <option value="Kelas 10 Ikhwan">Kelas 10 Ikhwan</option>
-                    <option value="Kelas 10 Akhwat">Kelas 10 Akhwat</option>
-                    <option value="Kelas 11 Ikhwan">Kelas 11 Ikhwan</option>
-                    <option value="Kelas 11 Akhwat">Kelas 11 Akhwat</option>
-                    <option value="Kelas 12 Ikhwan">Kelas 12 Ikhwan</option>
-                    <option value="Kelas 12 Akhwat">Kelas 12 Akhwat</option>
-                  </select>
-                )}
+                <select
+                  value={profile.kelas}
+                  onChange={(e) => handleClassChange(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                >
+                  <option value="">-- Pilih Angkatan --</option>
+                  <option value="Angkatan 5">Angkatan 5</option>
+                  <option value="Angkatan 6">Angkatan 6</option>
+                  <option value="Angkatan 7">Angkatan 7</option>
+                  <option value="Angkatan 8">Angkatan 8</option>
+                  <option value="Angkatan 9">Angkatan 9</option>
+                  <option value="Angkatan 10">Angkatan 10</option>
+                </select>
               </div>
             </div>
           </div>
@@ -358,72 +272,98 @@ export default function DataSiswa({ jenjang, profile, onChange, onNext }: DataSi
           </div>
         </div>
 
-        {/* Section 4: Keamanan Akun / Edit Password */}
-        <div className="space-y-4 pt-6 border-t border-gray-100 dark:border-gray-850">
-          <div className="flex items-center gap-2 text-rose-600 dark:text-rose-450 font-semibold border-b border-gray-50 dark:border-gray-800 pb-2">
-            <Lock className="h-4 w-4" />
-            <span>Pengaturan Keamanan & Password Akun</span>
+        {/* Section 4: Keamanan Akun (Sesuai Permintaan User) */}
+        <div className="space-y-4 border-t border-gray-100 dark:border-gray-850 pt-6">
+          <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-semibold border-b border-gray-50 dark:border-gray-800 pb-2">
+            <KeyRound className="h-4 w-4" />
+            <span>Ubah Kata Sandi Akun</span>
           </div>
 
-          <div className="bg-slate-50 dark:bg-slate-950/40 p-5 rounded-2xl border border-gray-100 dark:border-gray-800/80 space-y-4">
-            <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed font-semibold">
-              Secara bawaan, asrama menetapkan Nomor <strong>NISN ({profile.nisn})</strong> Anda sebagai kunci masuk default. Untuk mencegah orang lain mengakses lembar kuis atau hasil peta akademik & curhat Anda, silakan perbarui password rahasia Anda di bawah ini.
-            </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+            <div>
+              <label className="block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 font-mono">
+                Kata Sandi Baru
+              </label>
+              <input
+                type="password"
+                placeholder="Masukkan sandi baru"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950 text-gray-900 dark:text-white focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors font-mono"
+              />
+            </div>
 
-            <form onSubmit={handleUpdatePassword} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-              <div>
-                <label className="block text-[10px] font-extrabold uppercase tracking-wider text-gray-405 dark:text-gray-450 mb-1.5 font-mono">
-                  Password Baru
-                </label>
-                <input
-                  type="password"
-                  placeholder="Ketik password baru..."
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-4 py-2.5 text-xs rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 font-mono">
+                Konfirmasi Kata Sandi Baru
+              </label>
+              <input
+                type="password"
+                placeholder="Ulangi sandi baru"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950 text-gray-900 dark:text-white focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-colors font-mono"
+              />
+            </div>
 
-              <div>
-                <label className="block text-[10px] font-extrabold uppercase tracking-wider text-gray-405 dark:text-gray-450 mb-1.5 font-mono">
-                  Konfirmasi Password Baru
-                </label>
-                <input
-                  type="password"
-                  placeholder="Ketik ulang password..."
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-2.5 text-xs rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors"
-                />
-              </div>
-
-              <div>
-                <button
-                  type="submit"
-                  className="w-full py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-rose-500/10 cursor-pointer flex items-center justify-center gap-1.5 font-mono uppercase tracking-wide"
-                >
-                  <KeyRound className="h-3.5 w-3.5" />
-                  Simpan Password
-                </button>
-              </div>
-            </form>
-
-            {passwordStatus && (
-              <div className={`p-3 rounded-xl text-xs font-bold leading-normal ${
-                passwordStatus.type === "success" 
-                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" 
-                  : "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20"
-              }`}>
-                {passwordStatus.type === "success" ? "✓ " : "✗ "} {passwordStatus.message}
-              </div>
-            )}
+            <div>
+              <button
+                type="button"
+                onClick={() => {
+                  setPasswordStatus(null);
+                  if (!newPassword.trim() || !confirmPassword.trim()) {
+                    setPasswordStatus({ type: "error", message: "Harap isi kedua kolom kata sandi!" });
+                    return;
+                  }
+                  if (newPassword !== confirmPassword) {
+                    setPasswordStatus({ type: "error", message: "Kata sandi baru dan konfirmasi tidak cocok!" });
+                    return;
+                  }
+                  
+                  // Update password in the registered students list
+                  const rawList = localStorage.getItem("sipetakuliah_registered_students");
+                  if (rawList) {
+                    try {
+                      const list = JSON.parse(rawList);
+                      const sIndex = list.findIndex((s: any) => s.nisn === profile.nisn || s.nama.toLowerCase() === profile.nama.toLowerCase());
+                      if (sIndex !== -1) {
+                        list[sIndex].password = newPassword.trim();
+                        localStorage.setItem("sipetakuliah_registered_students", JSON.stringify(list));
+                        setPasswordStatus({ type: "success", message: "Kata sandi berhasil diperbarui!" });
+                        setNewPassword("");
+                        setConfirmPassword("");
+                      } else {
+                        setPasswordStatus({ type: "error", message: "Data akun Anda tidak ditemukan di daftar terdaftar. Harap daftarkan dulu akun Anda di halaman masuk." });
+                      }
+                    } catch (err) {
+                      setPasswordStatus({ type: "error", message: "Gagal merubah kata sandi!" });
+                    }
+                  } else {
+                    setPasswordStatus({ type: "error", message: "Tidak ada akun siswa terdaftar di local storage." });
+                  }
+                }}
+                className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-medium rounded-xl transition-colors cursor-pointer shadow-sm text-sm"
+              >
+                Simpan Kata Sandi
+              </button>
+            </div>
           </div>
+
+          {passwordStatus && (
+            <div className={`p-3 rounded-xl text-xs font-semibold ${
+              passwordStatus.type === "success" 
+                ? "bg-green-50 dark:bg-green-950/20 border border-green-150 dark:border-green-900 text-green-800 dark:text-green-400" 
+                : "bg-red-50 dark:bg-red-950/20 border border-red-150 dark:border-red-900 text-red-800 dark:text-red-400"
+            }`}>
+              {passwordStatus.message}
+            </div>
+          )}
         </div>
 
         {/* Warning Indicator */}
         {!isFormValid() && (
           <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-150 dark:border-amber-900/50 p-4 rounded-xl text-amber-800 dark:text-amber-400 text-sm">
-            Harap isi kolom bertanda bintang merah <strong>(Nama Lengkap, NISN, dan Kelas)</strong> untuk dapat melanjutkan ke langkah asesmen berikutnya.
+            Harap isi kolom bertanda bintang merah <strong>(Nama Lengkap dan Angkatan)</strong> untuk dapat melanjutkan ke langkah asesmen berikutnya.
           </div>
         )}
 

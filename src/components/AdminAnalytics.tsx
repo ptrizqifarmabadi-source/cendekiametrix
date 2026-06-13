@@ -134,6 +134,86 @@ export default function AdminAnalytics({ userRole }: AdminAnalyticsProps) {
   const [chatRecords, setChatRecords] = useState<any[]>([]);
   const [selectedChat, setSelectedChat] = useState<any | null>(null);
 
+  // States for login tracking statistics
+  const [studentLoginCounts, setStudentLoginCounts] = useState<{ [nisn: string]: any }>({});
+  const [bkLoginCounts, setBkLoginCounts] = useState<{ [username: string]: any }>({});
+  const [studentLoginSearch, setStudentLoginSearch] = useState("");
+  const [studentLoginFilterJenjang, setStudentLoginFilterJenjang] = useState<"ALL" | "SMP" | "SMA">("ALL");
+  const [studentLoginFilterActivity, setStudentLoginFilterActivity] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
+
+  const loadLoginCounts = () => {
+    const rawStudents = localStorage.getItem("sipetakuliah_student_login_counts");
+    if (rawStudents) {
+      try {
+        setStudentLoginCounts(JSON.parse(rawStudents));
+      } catch (e) {
+        setStudentLoginCounts({});
+      }
+    } else {
+      setStudentLoginCounts({});
+    }
+
+    const rawBk = localStorage.getItem("sipetakuliah_bk_login_counts");
+    if (rawBk) {
+      try {
+        setBkLoginCounts(JSON.parse(rawBk));
+      } catch (e) {
+        setBkLoginCounts({});
+      }
+    } else {
+      setBkLoginCounts({});
+    }
+  };
+
+  // States for verification and approval of self-registered students
+  const [registeredStudents, setRegisteredStudents] = useState<any[]>([]);
+
+  const loadRegisteredStudentsList = () => {
+    const rawList = localStorage.getItem("sipetakuliah_registered_students");
+    if (rawList) {
+      try {
+        const list = JSON.parse(rawList);
+        setRegisteredStudents(list);
+      } catch (e) {
+        setRegisteredStudents([]);
+      }
+    } else {
+      setRegisteredStudents([]);
+    }
+  };
+
+  const handleApproveStudent = (nisn: string) => {
+    const rawList = localStorage.getItem("sipetakuliah_registered_students");
+    if (!rawList) return;
+    try {
+      const list = JSON.parse(rawList);
+      const updated = list.map((s: any) => {
+        if (s.nisn === nisn) {
+          return { ...s, approved: true };
+        }
+        return s;
+      });
+      localStorage.setItem("sipetakuliah_registered_students", JSON.stringify(updated));
+      loadRegisteredStudentsList();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleRejectStudent = (nisn: string) => {
+    if (!window.confirm("Apakah Anda yakin ingin menolak & menghapus pengajuan pendaftaran siswa ini?")) return;
+    const rawList = localStorage.getItem("sipetakuliah_registered_students");
+    if (!rawList) return;
+    try {
+      const list = JSON.parse(rawList);
+      const updated = list.filter((s: any) => s.nisn !== nisn);
+      localStorage.setItem("sipetakuliah_registered_students", JSON.stringify(updated));
+      loadRegisteredStudentsList();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   // Direct physical BK Messaging and summarization states
   const [directMessages, setDirectMessages] = useState<any[]>([]);
   const [replyTexts, setReplyTexts] = useState<{ [msgId: string]: string }>({});
@@ -230,6 +310,8 @@ export default function AdminAnalytics({ userRole }: AdminAnalyticsProps) {
     loadChats();
     loadDirectMessages();
     loadSummaries();
+    loadRegisteredStudentsList();
+    loadLoginCounts();
     
     // Listen to localstorage changes to synchronize live
     const handleStorageChange = () => {
@@ -237,6 +319,8 @@ export default function AdminAnalytics({ userRole }: AdminAnalyticsProps) {
       loadChats();
       loadDirectMessages();
       loadSummaries();
+      loadRegisteredStudentsList();
+      loadLoginCounts();
       setSyncKey((prev) => prev + 1);
     };
     
@@ -246,6 +330,8 @@ export default function AdminAnalytics({ userRole }: AdminAnalyticsProps) {
       loadRecords();
       loadChats();
       loadDirectMessages();
+      loadRegisteredStudentsList();
+      loadLoginCounts();
     }, 2000);
     return () => {
       window.removeEventListener("storage", handleStorageChange);
@@ -351,38 +437,14 @@ export default function AdminAnalytics({ userRole }: AdminAnalyticsProps) {
   const isSmp = userRole === "bk_smp" || (filteredRecords.length > 0 && filteredRecords.every(st => st.kelas && (st.kelas.includes("7") || st.kelas.includes("8") || st.kelas.includes("9") || st.kelas.toLowerCase().includes("smp"))));
 
   // 1. DYNAMIC LIST OF AVAILABLE CLASSES
-  const baseClasses = userRole === "bk_smp"
-    ? [
-        "Kelas 7 Ikhwan",
-        "Kelas 7 Akhwat",
-        "Kelas 8 Ikhwan",
-        "Kelas 8 Akhwat",
-        "Kelas 9 Ikhwan",
-        "Kelas 9 Akhwat"
-      ]
-    : userRole === "bk_sma"
-    ? [
-        "Kelas 10 Ikhwan", 
-        "Kelas 10 Akhwat", 
-        "Kelas 11 Ikhwan", 
-        "Kelas 11 Akhwat", 
-        "Kelas 12 Ikhwan", 
-        "Kelas 12 Akhwat"
-      ]
-    : [
-        "Kelas 7 Ikhwan",
-        "Kelas 7 Akhwat",
-        "Kelas 8 Ikhwan",
-        "Kelas 8 Akhwat",
-        "Kelas 9 Ikhwan",
-        "Kelas 9 Akhwat",
-        "Kelas 10 Ikhwan", 
-        "Kelas 10 Akhwat", 
-        "Kelas 11 Ikhwan", 
-        "Kelas 11 Akhwat", 
-        "Kelas 12 Ikhwan", 
-        "Kelas 12 Akhwat"
-      ];
+  const baseClasses = [
+    "Angkatan 5",
+    "Angkatan 6",
+    "Angkatan 7",
+    "Angkatan 8",
+    "Angkatan 9",
+    "Angkatan 10"
+  ];
 
   const availableClasses = [
     "All", 
@@ -650,6 +712,374 @@ export default function AdminAnalytics({ userRole }: AdminAnalyticsProps) {
         </div>
 
       </div>
+
+      {/* Persetujuan Daftar Akun Mandiri (Persetujuan Pendaftaran) */}
+      {(() => {
+        const pendingStudents = registeredStudents.filter((s: any) => {
+          const isPending = s.approved === false;
+          if (!isPending) return false;
+          
+          if (userRole === "bk_smp") {
+            return s.jenjang === "SMP";
+          }
+          if (userRole === "bk_sma") {
+            return s.jenjang === "SMA";
+          }
+          return true; // BK SCB / Admin gets all
+        });
+
+        return (
+          <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-sm space-y-6 no-print">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="space-y-1">
+                <div className="text-[10px] font-bold text-blue-600 dark:text-blue-450 font-mono uppercase tracking-wider">
+                  Antrean Verifikasi Keanggotaan
+                </div>
+                <h3 className="text-lg font-black text-slate-905 dark:text-white font-display flex items-center gap-2">
+                  <span className="p-1 px-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 text-xs font-semibold">Pendaftaran</span>
+                  Persetujuan Pendaftaran Akun Siswa Baru (ACC)
+                </h3>
+                <p className="text-xs text-slate-550 dark:text-slate-400">
+                  Berikut pengajuan pendaftaran akun secara mandiri oleh santri. Klik &ldquo;ACC/Setujui&rdquo; untuk mengizinkan login siswa ke aplikasi atau &ldquo;Tolak&rdquo; jika fiktif.
+                </p>
+              </div>
+              {pendingStudents.length > 0 && (
+                <span className="px-2.5 py-1 bg-red-100 dark:bg-red-950/70 text-red-750 dark:text-red-450 font-bold font-mono text-[10px] rounded-full uppercase animate-pulse shrink-0">
+                  ● {pendingStudents.length} Pengajuan Tertunda
+                </span>
+              )}
+            </div>
+
+            {pendingStudents.length === 0 ? (
+              <div className="text-center py-8 bg-slate-50 dark:bg-slate-950/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+                <span className="text-3xl block mb-2">👤</span>
+                <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">Tidak Ada Pengajuan Pending</h4>
+                <p className="text-[11px] text-slate-400 max-w-sm mx-auto mt-1 leading-relaxed">
+                  Semua pendaftaran santri mandiri telah disetujui / tidak ada pengajuan pendaftaran baru yang tertunda.
+                </p>
+              </div>
+            ) : (
+              <div className="border border-slate-150 dark:border-slate-800/80 rounded-2xl overflow-hidden bg-slate-50/20 dark:bg-slate-950/20 overflow-x-auto">
+                <table className="w-full text-xs text-left border-collapse min-w-[600px]">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-950 text-slate-450 border-b border-slate-150 dark:border-slate-800 font-mono text-[9px] uppercase tracking-wider">
+                      <th className="p-3">Nama Santri</th>
+                      <th className="p-3">Username / NISN</th>
+                      <th className="p-3">Jenjang</th>
+                      <th className="p-3">Kelompok (Gender)</th>
+                      <th className="p-3">Angkatan</th>
+                      <th className="p-3 text-right">Aksi Penyetujuan</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                    {pendingStudents.map((student: any, idx: number) => (
+                      <tr key={idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-850/40 transition-colors">
+                        <td className="p-3 font-bold text-slate-900 dark:text-white">
+                          {student.nama}
+                        </td>
+                        <td className="p-3 font-mono text-slate-650 dark:text-slate-350 font-medium">
+                          {student.nisn}
+                        </td>
+                        <td className="p-3">
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase font-mono ${
+                            student.jenjang === "SMP"
+                              ? "bg-purple-100 dark:bg-purple-950/40 text-purple-705 dark:text-purple-400"
+                              : "bg-blue-100 dark:bg-blue-950/40 text-blue-705 dark:text-blue-400"
+                          }`}>
+                            {student.jenjang}
+                          </span>
+                        </td>
+                        <td className="p-3 font-medium text-slate-700 dark:text-slate-300">
+                          {student.gender}
+                        </td>
+                        <td className="p-3 font-mono text-slate-550 dark:text-slate-400">
+                          {student.angkatan}
+                        </td>
+                        <td className="p-3 text-right">
+                          <div className="flex gap-2 justify-end">
+                            <button
+                              onClick={() => handleRejectStudent(student.nisn)}
+                              className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/20 dark:hover:bg-rose-950/40 dark:text-rose-450 border border-slate-200 dark:border-slate-800 rounded-xl text-[10px] font-bold transition-all cursor-pointer font-mono uppercase"
+                            >
+                              Tolak
+                            </button>
+                            <button
+                              onClick={() => handleApproveStudent(student.nisn)}
+                              className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow shadow-emerald-500/10 rounded-xl text-[10px] font-bold transition-all cursor-pointer font-mono uppercase"
+                            >
+                              ✓ Setujui (ACC)
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* SECTION: AKTIVITAS LOGIN BK & SISWA */}
+      {(() => {
+        // Calculate student login counts mapped with official/registered list
+        const studentLoginsComputed = registeredStudents.map((student: any) => {
+          const nisnKey = student.nisn.trim();
+          const tracked = studentLoginCounts[nisnKey] || {};
+          return {
+            nama: student.nama,
+            nisn: student.nisn,
+            jenjang: student.jenjang,
+            angkatan: student.angkatan || "Angkatan 5",
+            gender: student.gender,
+            count: tracked.count || 0,
+            lastLogin: tracked.lastLogin || "-"
+          };
+        });
+
+        // Filter student logins based on user controls
+        const filteredStudentLogins = studentLoginsComputed.filter((student) => {
+          const matchesSearch = student.nama.toLowerCase().includes(studentLoginSearch.toLowerCase()) ||
+                                student.nisn.toLowerCase().includes(studentLoginSearch.toLowerCase());
+          
+          const matchesJenjang = studentLoginFilterJenjang === "ALL" || student.jenjang === studentLoginFilterJenjang;
+          
+          const matchesActivity = studentLoginFilterActivity === "ALL" ||
+            (studentLoginFilterActivity === "ACTIVE" && student.count > 0) ||
+            (studentLoginFilterActivity === "INACTIVE" && student.count === 0);
+
+          // Role-based scoping (BK SMP only sees SMP, BK SMA only SMA, Admin sees all)
+          const matchesRole = userRole === "admin" ||
+            (userRole === "bk_smp" && student.jenjang === "SMP") ||
+            (userRole === "bk_sma" && student.jenjang === "SMA");
+
+          return matchesSearch && matchesJenjang && matchesActivity && matchesRole;
+        });
+
+        // Compute helper stats
+        const totalStudentLoginsCount = studentLoginsComputed.reduce((acc, curr) => acc + curr.count, 0);
+        const loggedInAtLeastOnceCount = studentLoginsComputed.filter(s => s.count > 0).length;
+
+        const getBKCount = (username: string) => {
+          const tracked = bkLoginCounts[username] || {};
+          return {
+            count: tracked.count || 0,
+            lastLogin: tracked.lastLogin || "-"
+          };
+        };
+
+        const bkAccounts = [
+          { username: "admin", label: "BK SCB (Super Admin)", color: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-250 dark:border-emerald-900" },
+          { username: "BKSMP", label: "Guru BK SMP", color: "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-250 dark:border-purple-900" },
+          { username: "BKSMA", label: "Guru BK SMA", color: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-250 dark:border-blue-900" }
+        ];
+
+        return (
+          <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 md:p-8 shadow-sm space-y-6 no-print">
+            
+            {/* Header section with stats overview banner */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
+              <div className="space-y-1">
+                <div className="text-[10px] font-bold text-emerald-650 dark:text-emerald-400 font-mono uppercase tracking-wider">
+                  Sistem Pemantauan Akses &amp; Keaktifan
+                </div>
+                <h3 className="text-lg font-black text-slate-905 dark:text-white font-display flex items-center gap-2">
+                  <span className="p-1 px-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-650 text-xs font-semibold">Monitoring</span>
+                  Riwayat &amp; Intensitas Login (BK &amp; Siswa)
+                </h3>
+                <p className="text-xs text-slate-550 dark:text-slate-400">
+                  Daftar rekapitulasi pelaporan total aktivitas masuk oleh pendidik (Guru BK) dan santri demi audit internal ekosistem bimbingan.
+                </p>
+              </div>
+
+              {/* Total overview badges */}
+              <div className="flex flex-wrap gap-2">
+                <div className="px-3 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 rounded-xl text-left">
+                  <span className="text-[9px] text-slate-450 dark:text-slate-400 block font-mono uppercase">Total Login Siswa</span>
+                  <span className="text-xs font-extrabold text-slate-850 dark:text-white font-mono">{totalStudentLoginsCount} Kali</span>
+                </div>
+                <div className="px-3 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 rounded-xl text-left">
+                  <span className="text-[9px] text-slate-450 dark:text-slate-400 block font-mono uppercase">Siswa Aktif Login</span>
+                  <span className="text-xs font-extrabold text-emerald-650 font-mono">{loggedInAtLeastOnceCount} / {studentLoginsComputed.length} Siswa</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Core dashboard grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* COL 1: Counselor / BK Logins (Left 1/3) */}
+              <div className="space-y-4 lg:col-span-1 border-r-0 lg:border-r border-slate-100 dark:border-slate-800 pr-0 lg:pr-6">
+                <div>
+                  <h4 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider font-mono mb-1">
+                    Aktivitas Akun Guru BK
+                  </h4>
+                  <p className="text-[11px] text-slate-400">
+                    Frekuensi keaktifan dan update login harian para asatidzah / pembimbing BK sekolah.
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  {bkAccounts.map((account) => {
+                    const stats = getBKCount(account.username);
+                    return (
+                      <div 
+                        key={account.username} 
+                        className={`p-4 rounded-2xl border ${account.color} transition-all space-y-2 relative overflow-hidden`}
+                      >
+                        <div className="flex justify-between items-start gap-2">
+                          <span className="text-xs font-black font-display tracking-tight block">
+                            {account.label}
+                          </span>
+                          <span className="px-2 py-0.5 bg-white/70 dark:bg-black/20 text-[9px] font-mono rounded font-bold uppercase">
+                            ID: {account.username}
+                          </span>
+                        </div>
+
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-2xl font-black font-mono tracking-tight text-slate-900 dark:text-white">
+                            {stats.count}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-mono">Login</span>
+                        </div>
+
+                        <div className="pt-2 border-t border-slate-200/50 dark:border-slate-800/30 flex items-center gap-1.5 text-[10px] text-slate-505 font-mono">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                          <span>Last login: <span className="text-slate-700 dark:text-slate-300 font-bold">{stats.lastLogin}</span></span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* COL 2 & 3: Student Logins Table (Right 2/3) */}
+              <div className="space-y-4 lg:col-span-2">
+                
+                {/* Filters Row */}
+                <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Cari siswa berdasarkan nama / NISN..."
+                      value={studentLoginSearch}
+                      onChange={(e) => setStudentLoginSearch(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none dark:text-white"
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5">
+                    {/* Jenjang filter */}
+                    <div className="inline-flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl text-[10px] font-bold border border-slate-200/60 dark:border-slate-850">
+                      {(["ALL", "SMP", "SMA"] as const).map((opt) => (
+                        <button
+                          key={opt}
+                          onClick={() => setStudentLoginFilterJenjang(opt)}
+                          className={`px-2.5 py-1 rounded-lg transition-all capitalize cursor-pointer ${
+                            studentLoginFilterJenjang === opt
+                              ? "bg-white dark:bg-slate-800 shadow-sm text-slate-900 dark:text-white"
+                              : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                          }`}
+                        >
+                          {opt === "ALL" ? "Semua" : opt}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Active vs Inactive filter */}
+                    <div className="inline-flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl text-[10px] font-bold border border-slate-200/60 dark:border-slate-850">
+                      {(["ALL", "ACTIVE", "INACTIVE"] as const).map((opt) => (
+                        <button
+                          key={opt}
+                          onClick={() => setStudentLoginFilterActivity(opt)}
+                          className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${
+                            studentLoginFilterActivity === opt
+                              ? "bg-white dark:bg-slate-800 shadow-sm text-slate-900 dark:text-white"
+                              : "text-slate-400 hover:text-slate-605 dark:hover:text-slate-200"
+                          }`}
+                        >
+                          {opt === "ALL" ? "Semua Status" : opt === "ACTIVE" ? "Aktif" : "Belum Pernah"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Table wrapper */}
+                <div className="border border-slate-150 dark:border-slate-800/80 rounded-2xl overflow-hidden bg-slate-50/20 dark:bg-slate-950/20 overflow-x-auto">
+                  <div className="max-h-[350px] overflow-y-auto">
+                    <table className="w-full text-xs text-left border-collapse table-auto">
+                      <thead className="sticky top-0 bg-slate-50 dark:bg-slate-950 text-slate-450 border-b border-slate-150 dark:border-slate-800 font-mono text-[9px] uppercase tracking-wider z-10 shadow-sm">
+                        <tr>
+                          <th className="p-3">Nama Santri</th>
+                          <th className="p-3">NISN</th>
+                          <th className="p-3">Jenjang</th>
+                          <th className="p-3">Kelas / Angkatan</th>
+                          <th className="p-3 text-center">Jumlah Login</th>
+                          <th className="p-3 text-right">Informasi Login Akhir</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                        {filteredStudentLogins.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="text-center py-10 text-slate-400">
+                              <span className="block text-2xl mb-1">🔍</span>
+                              <p className="font-bold text-xs text-slate-650 dark:text-slate-400">Hasil pencarian tidak ditemukan</p>
+                              <p className="text-[10px] text-slate-455 mt-0.5">Coba dengan kata kunci pencarian atau kombinasi filter lain.</p>
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredStudentLogins.map((student: any, idx: number) => {
+                            const isNewbie = student.count === 0;
+                            return (
+                              <tr key={idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-850/40 transition-colors">
+                                <td className="p-3 font-bold text-slate-900 dark:text-white">
+                                  {student.nama}
+                                </td>
+                                <td className="p-3 font-mono text-slate-600 dark:text-slate-350">
+                                  {student.nisn}
+                                </td>
+                                <td className="p-3">
+                                  <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase font-mono ${
+                                    student.jenjang === "SMP"
+                                      ? "bg-purple-100 dark:bg-purple-950/40 text-purple-705 dark:text-purple-400"
+                                      : "bg-blue-100 dark:bg-blue-950/40 text-blue-705 dark:text-blue-400"
+                                  }`}>
+                                    {student.jenjang}
+                                  </span>
+                                </td>
+                                <td className="p-3 font-medium text-slate-505 dark:text-slate-400">
+                                  {student.angkatan} <span className="text-[10px] text-slate-400">({student.gender})</span>
+                                </td>
+                                <td className="p-3 text-center">
+                                  <span className={`inline-block px-2.5 py-0.5 rounded-full font-mono font-bold text-xs ${
+                                    isNewbie 
+                                      ? "bg-slate-100 dark:bg-slate-800 text-slate-400" 
+                                      : "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-705 dark:text-emerald-400"
+                                  }`}>
+                                    {student.count}×
+                                  </span>
+                                </td>
+                                <td className="p-3 text-right font-mono text-[10px] text-slate-500 dark:text-slate-400 font-medium font-bold">
+                                  {student.lastLogin}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        );
+      })()}
 
       {/* 4. Infographics Layout */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">

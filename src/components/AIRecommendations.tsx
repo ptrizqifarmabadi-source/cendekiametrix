@@ -305,7 +305,7 @@ export default function AIRecommendations({
                   <div className="flex items-center gap-2 border-b border-gray-50 dark:border-gray-900 pb-2.5">
                     <span className="w-5 h-5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[10px] font-mono font-extrabold flex items-center justify-center rounded-lg">1</span>
                     <h4 className="font-extrabold text-xs uppercase tracking-widest text-gray-500 dark:text-gray-400 font-mono">
-                      {profile.kelas?.includes("Kelas 7") || profile.kelas?.includes("Kelas 8") || profile.kelas?.includes("Kelas 9")
+                      {appState.jenjang === "SMP"
                         ? "KELAS VII - Adaptasi & Fondasi"
                         : "KELAS X - Adaptasi & Fondasi"
                       }
@@ -321,7 +321,7 @@ export default function AIRecommendations({
                   <div className="flex items-center gap-2 border-b border-gray-50 dark:border-gray-900 pb-2.5">
                     <span className="w-5 h-5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-[10px] font-mono font-extrabold flex items-center justify-center rounded-lg">2</span>
                     <h4 className="font-extrabold text-xs uppercase tracking-widest text-gray-500 dark:text-gray-400 font-mono">
-                      {profile.kelas?.includes("Kelas 7") || profile.kelas?.includes("Kelas 8") || profile.kelas?.includes("Kelas 9")
+                      {appState.jenjang === "SMP"
                         ? "KELAS VIII - Akselerasi & Karakter"
                         : "KELAS XI - Akselerasi & Portofolio"
                       }
@@ -337,7 +337,7 @@ export default function AIRecommendations({
                   <div className="flex items-center gap-2 border-b border-gray-50 dark:border-gray-900 pb-2.5">
                     <span className="w-5 h-5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-[10px] font-mono font-extrabold flex items-center justify-center rounded-lg">3</span>
                     <h4 className="font-extrabold text-xs uppercase tracking-widest text-gray-500 dark:text-gray-400 font-mono">
-                      {profile.kelas?.includes("Kelas 7") || profile.kelas?.includes("Kelas 8") || profile.kelas?.includes("Kelas 9")
+                      {appState.jenjang === "SMP"
                         ? "KELAS IX - Sukses & Studi Lanjut"
                         : "KELAS XII - Klimaks & Sukses Jalur"
                       }

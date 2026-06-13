@@ -58,35 +58,6 @@ export default function TemanCurhatAI({ profile, jenjang, onUpdateProfile, onLog
   const [editKelas, setEditKelas] = useState(profile.kelas || "");
   const [updateSuccess, setUpdateSuccess] = useState(false);
 
-  // Password change states in TemanCurhatAI
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordStatus, setPasswordStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
-
-  const customPasswordKey = `student_password_of_${profile.nisn}`;
-
-  const handleUpdatePassword = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPassword.trim()) {
-      setPasswordStatus({ type: "error", message: "Password baru tidak boleh kosong!" });
-      return;
-    }
-    if (newPassword.length < 4) {
-      setPasswordStatus({ type: "error", message: "Password minimal terdiri dari 4 karakter demi keamanan!" });
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setPasswordStatus({ type: "error", message: "Konfirmasi password baru tidak cocok!" });
-      return;
-    }
-
-    localStorage.setItem(customPasswordKey, newPassword.trim());
-    setNewPassword("");
-    setConfirmPassword("");
-    setPasswordStatus({ type: "success", message: "Sip! Password keamanan Anda berhasil diperbarui!" });
-    setTimeout(() => setPasswordStatus(null), 4000);
-  };
-
   // Load physical BK direct messages helper
   const loadDirectMessages = () => {
     const raw = localStorage.getItem("sipetakuliah_direct_bk_messages");
@@ -845,68 +816,6 @@ export default function TemanCurhatAI({ profile, jenjang, onUpdateProfile, onLog
                   SIMPAN BIODATA SAYA
                 </button>
               </form>
-
-              {/* Password Setting Section for Counseling Student */}
-              <div className="border-t border-slate-100 dark:border-slate-800/80 pt-6 space-y-4">
-                <div className="flex items-center gap-2 text-rose-600 dark:text-rose-450 font-semibold border-b border-gray-50 dark:border-gray-800/50 pb-2">
-                  <Lock className="h-4 w-4" />
-                  <span>Ubah Password Keamanan Akun</span>
-                </div>
-
-                <div className="bg-slate-50 dark:bg-slate-950/40 p-4.5 rounded-2xl border border-slate-150/40 dark:border-slate-800/60 space-y-3.5">
-                  <p className="text-xs text-slate-550 dark:text-slate-400 leading-relaxed font-semibold">
-                    Password default kamu adalah <strong>NISN ({profile.nisn})</strong>. Agar obrolan curhat rahasia kamu dengan Teman CurhatKu dan Guru BK tidak dibaca salah asrama atau kawan lainnya, segera perbarui password kamu di bawah ini.
-                  </p>
-
-                  <form onSubmit={handleUpdatePassword} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 font-mono">
-                        Password Baru
-                      </label>
-                      <input
-                        type="password"
-                        placeholder="Password rahasia baru..."
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 text-xs text-slate-850 dark:text-white border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none focus:border-rose-650"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 font-mono">
-                        Konfirmasi Password Baru
-                      </label>
-                      <input
-                        type="password"
-                        placeholder="Ulangi password baru..."
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 text-xs text-slate-850 dark:text-white border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none focus:border-rose-650"
-                      />
-                    </div>
-
-                    <div>
-                      <button
-                        type="submit"
-                        className="w-full py-2.5 px-4 bg-rose-600 hover:bg-rose-750 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-rose-500/10 hover:shadow-rose-500/20 cursor-pointer flex items-center justify-center gap-1.5 font-mono uppercase tracking-wider"
-                      >
-                        <KeyRound className="h-3.5 w-3.5" />
-                        Simpan Password
-                      </button>
-                    </div>
-                  </form>
-
-                  {passwordStatus && (
-                    <div className={`p-3 rounded-xl text-xs font-bold leading-normal ${
-                      passwordStatus.type === "success" 
-                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" 
-                        : "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20"
-                    }`}>
-                      {passwordStatus.type === "success" ? "✓ " : "✗ "} {passwordStatus.message}
-                    </div>
-                  )}
-                </div>
-              </div>
             </div>
           )}
 
