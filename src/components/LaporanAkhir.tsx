@@ -28,7 +28,7 @@ import RekapHasilSiswa from "./RekapHasilSiswa";
 interface LaporanAkhirProps {
   appState: FullAppState;
   isAdmin?: boolean;
-  userRole?: "peserta" | "admin" | "bk_smp" | "bk_sma" | null;
+  userRole?: string | null;
 }
 
 export default function LaporanAkhir({ appState, isAdmin, userRole }: LaporanAkhirProps) {
@@ -51,6 +51,10 @@ export default function LaporanAkhir({ appState, isAdmin, userRole }: LaporanAkh
             filtered = parsed.filter(st => st.kelas && (st.kelas.includes("7") || st.kelas.includes("8") || st.kelas.includes("9") || st.kelas.toLowerCase().includes("smp")));
           } else if (userRole === "bk_sma") {
             filtered = parsed.filter(st => st.kelas && (st.kelas.includes("10") || st.kelas.includes("11") || st.kelas.includes("12") || st.kelas.toLowerCase().includes("sma") || st.kelas.toLowerCase().includes("ma")));
+          } else if (userRole?.startsWith("walas_")) {
+            const angkatanNum = userRole.split("_")[1];
+            const angkatanName = `Angkatan ${angkatanNum}`;
+            filtered = parsed.filter(st => st.kelas === angkatanName || (st as any).angkatan === angkatanName);
           }
           setAllStudents(filtered);
         }
@@ -521,7 +525,7 @@ export default function LaporanAkhir({ appState, isAdmin, userRole }: LaporanAkh
         </div>
       )}
 
-      {((userRole === "admin" || userRole === "bk_smp" || userRole === "bk_sma") && selectedIndex === -1 && !profile.nama) ? (
+      {((userRole === "admin" || userRole === "bk_smp" || userRole === "bk_sma" || userRole?.startsWith("walas_")) && selectedIndex === -1 && !profile.nama) ? (
         <div className="bg-slate-50 dark:bg-slate-900/50 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl p-12 text-center space-y-4 shadow-sm">
           <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto shadow-inner border border-blue-100 dark:border-blue-900/30">
             <Users className="h-8 w-8 animate-pulse" />

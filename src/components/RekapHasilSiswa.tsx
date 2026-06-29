@@ -28,7 +28,7 @@ const DEFAULT_RECORDS: CompletedTestRecord[] = [];
 interface RekapHasilSiswaProps {
   appState: FullAppState;
   isAdmin?: boolean;
-  userRole?: "peserta" | "admin" | "bk_smp" | "bk_sma" | null;
+  userRole?: string | null;
 }
 
 export default function RekapHasilSiswa({ appState, isAdmin, userRole }: RekapHasilSiswaProps) {
@@ -57,6 +57,10 @@ export default function RekapHasilSiswa({ appState, isAdmin, userRole }: RekapHa
           filtered = cleaned.filter(st => st.kelas && (st.kelas.includes("7") || st.kelas.includes("8") || st.kelas.includes("9") || st.kelas.toLowerCase().includes("smp")));
         } else if (userRole === "bk_sma") {
           filtered = cleaned.filter(st => st.kelas && (st.kelas.includes("10") || st.kelas.includes("11") || st.kelas.includes("12") || st.kelas.toLowerCase().includes("sma") || st.kelas.toLowerCase().includes("ma")));
+        } else if (userRole?.startsWith("walas_")) {
+          const angkatanNum = userRole.split("_")[1];
+          const angkatanName = `Angkatan ${angkatanNum}`;
+          filtered = cleaned.filter(st => st.kelas === angkatanName || (st as any).angkatan === angkatanName);
         }
         setRecords(filtered);
       } catch (e) {
@@ -190,6 +194,10 @@ export default function RekapHasilSiswa({ appState, isAdmin, userRole }: RekapHa
       filtered = updatedFull.filter(st => st.kelas && (st.kelas.includes("7") || st.kelas.includes("8") || st.kelas.includes("9") || st.kelas.toLowerCase().includes("smp")));
     } else if (userRole === "bk_sma") {
       filtered = updatedFull.filter(st => st.kelas && (st.kelas.includes("10") || st.kelas.includes("11") || st.kelas.includes("12") || st.kelas.toLowerCase().includes("sma") || st.kelas.toLowerCase().includes("ma")));
+    } else if (userRole?.startsWith("walas_")) {
+      const angkatanNum = userRole.split("_")[1];
+      const angkatanName = `Angkatan ${angkatanNum}`;
+      filtered = updatedFull.filter(st => st.kelas === angkatanName || (st as any).angkatan === angkatanName);
     }
     setRecords(filtered);
 

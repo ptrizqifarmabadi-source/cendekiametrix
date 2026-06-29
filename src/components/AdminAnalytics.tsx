@@ -129,7 +129,7 @@ interface CompletedTestRecord {
 const DEFAULT_RECORDS: CompletedTestRecord[] = [];
 
 interface AdminAnalyticsProps {
-  userRole?: "peserta" | "admin" | "bk_smp" | "bk_sma" | null;
+  userRole?: string | null;
 }
 
 export default function AdminAnalytics({ userRole }: AdminAnalyticsProps) {
@@ -287,7 +287,13 @@ export default function AdminAnalytics({ userRole }: AdminAnalyticsProps) {
   const handleTeacherAddAnswer = (discId: string) => {
     if (!forumReplyText.trim()) return;
 
-    const teacherName = userRole === "bk_smp" ? "Guru BK SMP SCB" : userRole === "bk_sma" ? "Guru BK SMA SCB" : "Admin BK SCB";
+    const teacherName = userRole === "bk_smp" 
+      ? "Guru BK SMP SCB" 
+      : userRole === "bk_sma" 
+      ? "Guru BK SMA SCB" 
+      : userRole?.startsWith("walas_")
+      ? `Wali Kelas Angkatan ${userRole.split("_")[1]} SCB`
+      : "Admin BK SCB";
     const newAnswer = {
       id: "ans_teacher_" + Date.now(),
       content: forumReplyText.trim(),
@@ -344,6 +350,10 @@ export default function AdminAnalytics({ userRole }: AdminAnalyticsProps) {
           filtered = parsed.filter((c: any) => c.jenjang === "SMP");
         } else if (userRole === "bk_sma") {
           filtered = parsed.filter((c: any) => c.jenjang === "SMA");
+        } else if (userRole?.startsWith("walas_")) {
+          const angkatanNum = userRole.split("_")[1];
+          const angkatanName = `Angkatan ${angkatanNum}`;
+          filtered = parsed.filter((c: any) => c.kelas === angkatanName || c.angkatan === angkatanName);
         }
         setChatRecords(filtered);
       } catch (e) {
@@ -365,6 +375,10 @@ export default function AdminAnalytics({ userRole }: AdminAnalyticsProps) {
           filtered = parsed.filter((m: any) => m.jenjang === "SMP");
         } else if (userRole === "bk_sma") {
           filtered = parsed.filter((m: any) => m.jenjang === "SMA");
+        } else if (userRole?.startsWith("walas_")) {
+          const angkatanNum = userRole.split("_")[1];
+          const angkatanName = `Angkatan ${angkatanNum}`;
+          filtered = parsed.filter((m: any) => m.kelas === angkatanName || m.angkatan === angkatanName);
         }
         setDirectMessages(filtered);
       } catch (e) {
@@ -407,6 +421,10 @@ export default function AdminAnalytics({ userRole }: AdminAnalyticsProps) {
           filtered = cleaned.filter(st => st.kelas && (st.kelas.includes("7") || st.kelas.includes("8") || st.kelas.includes("9") || st.kelas.toLowerCase().includes("smp")));
         } else if (userRole === "bk_sma") {
           filtered = cleaned.filter(st => st.kelas && (st.kelas.includes("10") || st.kelas.includes("11") || st.kelas.includes("12") || st.kelas.toLowerCase().includes("sma") || st.kelas.toLowerCase().includes("ma")));
+        } else if (userRole?.startsWith("walas_")) {
+          const angkatanNum = userRole.split("_")[1];
+          const angkatanName = `Angkatan ${angkatanNum}`;
+          filtered = cleaned.filter(st => st.kelas === angkatanName || (st as any).angkatan === angkatanName);
         }
         setRecords(filtered);
       } catch (e) {
@@ -968,7 +986,8 @@ export default function AdminAnalytics({ userRole }: AdminAnalyticsProps) {
           // Role-based scoping (BK SMP only sees SMP, BK SMA only SMA, Admin sees all)
           const matchesRole = userRole === "admin" ||
             (userRole === "bk_smp" && student.jenjang === "SMP") ||
-            (userRole === "bk_sma" && student.jenjang === "SMA");
+            (userRole === "bk_sma" && student.jenjang === "SMA") ||
+            (userRole?.startsWith("walas_") && (student.angkatan === `Angkatan ${userRole.split("_")[1]}` || student.kelas === `Angkatan ${userRole.split("_")[1]}`));
 
           return matchesSearch && matchesJenjang && matchesActivity && matchesRole;
         });

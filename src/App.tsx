@@ -247,7 +247,7 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
   // New admin and role state management
-  const [userRole, setUserRole] = useState<"peserta" | "peserta_curhat" | "admin" | "bk_smp" | "bk_sma" | null>(() => {
+  const [userRole, setUserRole] = useState<string | null>(() => {
     return (localStorage.getItem("sipetakuliah_current_role") as any) || null;
   });
   const [adminUsername, setAdminUsername] = useState("");
@@ -427,11 +427,11 @@ export default function App() {
     handleSetRole("peserta_curhat");
   };
 
-  const handleSetRole = (role: "peserta" | "peserta_curhat" | "admin" | "bk_smp" | "bk_sma" | null) => {
+  const handleSetRole = (role: string | null) => {
     setUserRole(role);
     if (role) {
       localStorage.setItem("sipetakuliah_current_role", role);
-      if (role === "admin" || role === "bk_smp" || role === "bk_sma") {
+      if (role === "admin" || role === "bk_smp" || role === "bk_sma" || role.startsWith("walas_")) {
         setActiveMenu(10); // Default to Admin Analytics & Infographics
       } else if (role === "peserta_curhat") {
         setActiveMenu(30); // Special active menu ID for counseling main view
@@ -623,7 +623,7 @@ export default function App() {
     }
   };
 
-  const menuItems = (userRole === "admin" || userRole === "bk_smp" || userRole === "bk_sma")
+  const menuItems = (userRole === "admin" || userRole === "bk_smp" || userRole === "bk_sma" || userRole?.startsWith("walas_"))
     ? [
         { id: 10, label: "Info Grafis & BK", icon: LayoutDashboard },
         { id: 9, label: "Cetak Lapor Siswa", icon: Award }
@@ -1353,9 +1353,9 @@ export default function App() {
                 </div>
 
                 <div className="space-y-2">
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">Admin &amp; Guru BK</h3>
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">Pendidik &amp; Staf (Admin/BK/Walas)</h3>
                   <p className="text-xs text-slate-550 dark:text-slate-400 leading-relaxed">
-                    Akses dashboard bimbingan sekolah, kelola pangkalan hasil rekapitulasi siswa, lakukan pembersihan total records siswa ataupun menyaring basis data historis angkatan.
+                    Akses dashboard bimbingan sekolah, kelola pangkalan hasil rekapitulasi siswa, lakukan pemantauan sebaran kelas, atau saring basis data historis sesuai angkatan asuhan Anda.
                   </p>
                 </div>
 
@@ -1377,17 +1377,25 @@ export default function App() {
                       setLoginError("");
                       recordBKLoginCount("BKSMA", "Guru BK SMA");
                       handleSetRole("bk_sma");
+                    } else if (["walas5", "walas6", "walas7", "walas8", "walas9"].includes(user) && pwd === "@Walasjuara1") {
+                      const angkatanNum = user.replace("walas", "");
+                      setLoginError("");
+                      recordBKLoginCount(user, `Wali Kelas Angkatan ${angkatanNum}`);
+                      handleSetRole(`walas_${angkatanNum}`);
                     } else {
-                      setLoginError("ID atau Password Admin / Guru BK Salah!");
+                      setLoginError("ID atau Password Admin / Guru BK / Wali Kelas Salah!");
                     }
                   }}
                   className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800"
                 >
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">ID Admin / Guru BK</label>
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">ID Pendidik / Staf</label>
+                      <span className="text-[9px] text-blue-500 font-mono font-bold">Walas: walas5-walas9</span>
+                    </div>
                     <input
                       type="text"
-                      placeholder="Masukkan ID Admin atau BK"
+                      placeholder="Masukkan ID (contoh: walas5)"
                       value={adminUsername}
                       onChange={(e) => setAdminUsername(e.target.value)}
                       className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none text-slate-900 dark:text-white font-mono"
@@ -1517,17 +1525,25 @@ export default function App() {
 
           <div className="h-8 w-px bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
 
-          {userRole === "admin" ? (
+          {userRole && ["admin", "bk_smp", "bk_sma"].includes(userRole) || userRole?.startsWith("walas_") ? (
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
-                <div className="text-xs font-bold text-red-600 dark:text-red-400 uppercase tracking-wide font-mono">ADMIN MODE</div>
+                <div className="text-xs font-bold text-red-650 dark:text-red-400 uppercase tracking-wide font-mono">
+                  {userRole === "admin" 
+                    ? "SUPER ADMIN BK" 
+                    : userRole === "bk_smp" 
+                    ? "GURU BK SMP" 
+                    : userRole === "bk_sma" 
+                    ? "GURU BK SMA" 
+                    : `WALAS ANGKATAN ${userRole!.split("_")[1]}`}
+                </div>
                 <div className="text-[9px] text-slate-500 dark:text-slate-450 font-mono font-semibold uppercase tracking-wider">Sekolah Cendekia BAZNAS</div>
               </div>
               <button
                 onClick={() => handleSetRole(null)}
                 className="px-3.5 py-1.5 bg-red-650 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md font-mono"
               >
-                Keluar Admin
+                Keluar Portal
               </button>
             </div>
           ) : (
