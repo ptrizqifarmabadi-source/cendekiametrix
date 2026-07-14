@@ -424,6 +424,11 @@ export default function App() {
       angkatan: resolvedAngkatan || "Angkatan 5"
     });
 
+    localStorage.setItem("sipetakuliah_logged_in_student", JSON.stringify({
+      nama: resolvedNama,
+      nisn: resolvedNisn
+    }));
+
     handleSetRole("peserta_curhat");
   };
 
@@ -440,6 +445,7 @@ export default function App() {
       }
     } else {
       localStorage.removeItem("sipetakuliah_current_role");
+      localStorage.removeItem("sipetakuliah_logged_in_student");
       setAdminUsername("");
       setAdminPassword("");
       setLoginError("");
@@ -527,9 +533,187 @@ export default function App() {
   useEffect(() => {
     if (appState !== DEFAULT_STATE) {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(appState));
+      
       if ((userRole === "peserta" || userRole === "peserta_curhat") && appState.profile.nama) {
-        const nameKey = appState.profile.nama.toLowerCase().trim().replace(/[^a-z0-9]/g, "_");
+        const currentNama = appState.profile.nama.trim();
+        const currentNisn = appState.profile.nisn ? appState.profile.nisn.trim() : "";
+        const nameKey = currentNama.toLowerCase().replace(/[^a-z0-9]/g, "_");
+        
+        // 1. Save individual student state
         localStorage.setItem(`${LOCAL_STORAGE_KEY}_student_${nameKey}`, JSON.stringify(appState));
+
+        // 2. Check if the Name changed compared to logged-in details
+        const loggedInRaw = localStorage.getItem("sipetakuliah_logged_in_student");
+        if (loggedInRaw) {
+          try {
+            const loggedIn = JSON.parse(loggedInRaw);
+            const oldNama = loggedIn.nama ? loggedIn.nama.trim() : "";
+            const oldNisn = loggedIn.nisn ? loggedIn.nisn.trim() : "";
+            
+            if (oldNama && oldNama !== currentNama) {
+              // Name has been changed in profile! Sync registered student database
+              const rawReg = localStorage.getItem("sipetakuliah_registered_students");
+              if (rawReg) {
+                const regList = JSON.parse(rawReg);
+                const sIndex = regList.findIndex((s: any) => 
+                  (s.nisn && oldNisn && s.nisn.trim() === oldNisn) || 
+                  (s.nama && s.nama.toLowerCase().trim() === oldNama.toLowerCase())
+                );
+                
+                if (sIndex !== -1) {
+                  regList[sIndex].nama = currentNama;
+                  // If NISN also changed, update it too
+                  if (currentNisn && currentNisn !== oldNisn) {
+                    regList[sIndex].nisn = currentNisn;
+                  }
+                  localStorage.setItem("sipetakuliah_registered_students", JSON.stringify(regList));
+                }
+              }
+              
+              // Remove the old state file in localStorage so there is no clutter/loss of data
+              const oldNameKey = oldNama.toLowerCase().replace(/[^a-z0-9]/g, "_");
+              localStorage.removeItem(`${LOCAL_STORAGE_KEY}_student_${oldNameKey}`);
+              
+              // Update the logged-in student record to keep it synced
+              localStorage.setItem("sipetakuliah_logged_in_student", JSON.stringify({
+                nama: currentNama,
+                nisn: currentNisn || oldNisn
+              }));
+            }
+          } catch (e) {
+            console.error("Error in student name update syncing:", e);
+          }
+        }
+
+        // 3. Auto-save / sync latest test results and profile details into the main cohort recap (sipetakuliah_cohort_recap)
+        try {
+          const { profile, keagamaan, akademik, minatBakat, iqTest, aiRecommendation } = appState;
+          const isSmp = appState.jenjang === "SMP";
+
+          const rValues = Object.values(akademik.nilaiRapor || {}) as number[];
+          const avgRapor = rValues.length ? Math.round(rValues.reduce((a: number, b: number) => a + b, 0) / rValues.length) : 0;
+
+          let sortedRiasec: string[] = [];
+          if (isSmp) {
+            const scoresVAK = { V: 0, A: 0, K: 0 };
+            Object.entries(appState.gayaBelajar?.answers || {}).forEach(([qIdStr, val]) => {
+              const qId = parseInt(qIdStr);
+              const numVal = typeof val === "number" ? val : parseInt(val as string) || 0;
+              if (qId >= 1 && qId <= 10) scoresVAK.V += numVal;
+              else if (qId >= 11 && qId <= 20) scoresVAK.A += numVal;
+              else if (qId >= 21 && qId <= 30) scoresVAK.K += numVal;
+            });
+
+            const maxPoints = 50;
+            const sorted = [
+              { label: "Visual (V)", val: Math.round((scoresVAK.V / maxPoints) * 100) },
+              { label: "Auditori (A)", val: Math.round((scoresVAK.A / maxPoints) * 100) },
+              { label: "Kinestetik (K)", val: Math.round((scoresVAK.K / maxPoints) * 100) }
+            ].sort((a, b) => b.val - a.val);
+
+            sortedRiasec = sorted.map(x => `${x.label} (${x.val}%)`);
+          } else {
+            const riasecMappingScore = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
+            const R_ids = [1, 7, 13, 19, 25, 31, 37, 43, 49, 55];
+            const I_ids = [2, 8, 14, 20, 26, 32, 38, 44, 50, 56];
+            const A_ids = [3, 9, 15, 21, 27, 33, 39, 45, 51, 57];
+            const S_ids = [4, 10, 16, 22, 28, 34, 40, 46, 52, 58];
+            const E_ids = [5, 11, 17, 23, 29, 35, 41, 47, 53, 59];
+            const C_ids = [6, 12, 18, 24, 30, 36, 42, 48, 54, 60];
+
+            Object.entries(minatBakat?.answers || {}).forEach(([qIdStr, val]) => {
+              const qId = parseInt(qIdStr);
+              const numVal = typeof val === "number" ? val : parseInt(val as string) || 0;
+              if (R_ids.includes(qId)) riasecMappingScore.R += numVal;
+              else if (I_ids.includes(qId)) riasecMappingScore.I += numVal;
+              else if (A_ids.includes(qId)) riasecMappingScore.A += numVal;
+              else if (S_ids.includes(qId)) riasecMappingScore.S += numVal;
+              else if (E_ids.includes(qId)) riasecMappingScore.E += numVal;
+              else if (C_ids.includes(qId)) riasecMappingScore.C += numVal;
+            });
+
+            const dominanLabels = {
+              R: "Realistic (R)",
+              I: "Investigative (I)",
+              A: "Artistic (A)",
+              S: "Social (S)",
+              E: "Enterprising (E)",
+              C: "Conventional (C)"
+            };
+
+            sortedRiasec = (Object.keys(riasecMappingScore) as ("R" | "I" | "A" | "S" | "E" | "C")[])
+              .map(key => ({
+                label: dominanLabels[key],
+                val: riasecMappingScore[key]
+              }))
+              .sort((a: any, b: any) => b.val - a.val)
+              .slice(0, 3)
+              .map(x => x.label);
+          }
+
+          const recMajors = (aiRecommendation?.majors || []).map((m: any) => m.name).slice(0, 2);
+          if (recMajors.length === 0) {
+            recMajors.push(isSmp ? "Lengkapi Profil & Gaya Belajar" : "Selesaikan Rekomendasi Karir AI");
+          }
+
+          let iqCat = "Rata-rata";
+          const iqVal = iqTest?.iqScore || 100;
+          if (iqVal >= 130) iqCat = "Sangat Superior";
+          else if (iqVal >= 120) iqCat = "Superior";
+          else if (iqVal >= 110) iqCat = "Rata-rata Tinggi";
+          else if (iqVal >= 90) iqCat = "Rata-rata";
+          else iqCat = "Rata-rata Bawah";
+
+          const rawRecap = localStorage.getItem("sipetakuliah_cohort_recap");
+          let recapList: any[] = [];
+          if (rawRecap) {
+            try {
+              recapList = JSON.parse(rawRecap);
+            } catch (e) {}
+          }
+
+          // Search by current or old logged in name to update existing record securely
+          let oldNamaForSearch = "";
+          if (loggedInRaw) {
+            try {
+              const loggedIn = JSON.parse(loggedInRaw);
+              if (loggedIn.nama) oldNamaForSearch = loggedIn.nama.trim().toLowerCase();
+            } catch (e) {}
+          }
+
+          const matchIndex = recapList.findIndex(r => 
+            (r.nisn && currentNisn && r.nisn.trim() === currentNisn) || 
+            (r.nama && r.nama.toLowerCase().trim() === currentNama.toLowerCase()) ||
+            (oldNamaForSearch && r.nama && r.nama.toLowerCase().trim() === oldNamaForSearch)
+          );
+          
+          const existingRecord = matchIndex !== -1 ? recapList[matchIndex] : null;
+
+          const updatedRecord = {
+            id: existingRecord ? existingRecord.id : "user-" + Date.now(),
+            nama: currentNama,
+            nisn: currentNisn || "0090000000",
+            kelas: profile.kelas || (isSmp ? "Kelas 7 SMP" : "Kelas X-A"),
+            avgRapor: isSmp ? 0 : avgRapor,
+            iqScore: iqVal,
+            iqCategory: iqCat,
+            topRiasec: sortedRiasec,
+            rekomendasiJurusan: recMajors,
+            tanggalTes: existingRecord ? existingRecord.tanggalTes : new Date().toISOString().split("T")[0],
+            isUserAdded: true,
+            portfolio: appState.portfolio
+          };
+
+          if (matchIndex !== -1) {
+            recapList[matchIndex] = updatedRecord;
+          } else {
+            recapList.unshift(updatedRecord);
+          }
+
+          localStorage.setItem("sipetakuliah_cohort_recap", JSON.stringify(recapList));
+        } catch (e) {
+          console.error("Error in auto-saving results to cohort recap:", e);
+        }
       }
     }
   }, [appState, userRole]);
@@ -606,6 +790,11 @@ export default function App() {
       jenjang: jenjang,
       angkatan: resolvedAngkatan || "Angkatan 5"
     });
+
+    localStorage.setItem("sipetakuliah_logged_in_student", JSON.stringify({
+      nama: resolvedNama,
+      nisn: resolvedNisn
+    }));
 
     handleSetRole("peserta");
   };

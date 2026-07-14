@@ -325,7 +325,26 @@ export default function DataSiswa({ jenjang, profile, onChange, onNext }: DataSi
                   if (rawList) {
                     try {
                       const list = JSON.parse(rawList);
-                      const sIndex = list.findIndex((s: any) => s.nisn === profile.nisn || s.nama.toLowerCase() === profile.nama.toLowerCase());
+                      
+                      // Fallback check to find the exact registered student record using logged-in session details
+                      const loggedInStudentRaw = localStorage.getItem("sipetakuliah_logged_in_student");
+                      let searchNisn = profile.nisn ? profile.nisn.trim() : "";
+                      let searchNama = profile.nama ? profile.nama.trim().toLowerCase() : "";
+                      if (loggedInStudentRaw) {
+                        try {
+                          const loggedIn = JSON.parse(loggedInStudentRaw);
+                          if (loggedIn.nisn) searchNisn = loggedIn.nisn.trim();
+                          if (loggedIn.nama) searchNama = loggedIn.nama.trim().toLowerCase();
+                        } catch (e) {}
+                      }
+
+                      const sIndex = list.findIndex((s: any) => 
+                        (s.nisn && searchNisn && s.nisn.trim() === searchNisn) || 
+                        (s.nama && searchNama && s.nama.toLowerCase().trim() === searchNama) ||
+                        (s.nisn && profile.nisn && s.nisn.trim() === profile.nisn.trim()) ||
+                        (s.nama && profile.nama && s.nama.toLowerCase().trim() === profile.nama.toLowerCase().trim())
+                      );
+
                       if (sIndex !== -1) {
                         list[sIndex].password = newPassword.trim();
                         localStorage.setItem("sipetakuliah_registered_students", JSON.stringify(list));
