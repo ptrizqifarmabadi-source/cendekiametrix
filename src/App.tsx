@@ -1016,7 +1016,7 @@ export default function App() {
                                   onClick={() => {
                                     setStudentNama(s.nama);
                                     setStudentNisn(s.nisn);
-                                    setStudentPassword(s.password || s.nisn);
+                                    setStudentPassword(s.password && s.password !== s.nisn ? "" : (s.password || s.nisn));
                                     setStudentShowSuggestions(false);
                                   }}
                                   className="w-full px-3.5 py-2.5 text-left text-xs text-slate-700 dark:text-slate-350 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors flex items-center justify-between cursor-pointer"
@@ -1337,7 +1337,7 @@ export default function App() {
                                   onClick={() => {
                                     setCounselingNama(s.nama);
                                     setCounselingNisn(s.nisn);
-                                    setCounselingPassword(s.password || s.nisn);
+                                    setCounselingPassword(s.password && s.password !== s.nisn ? "" : (s.password || s.nisn));
                                     setCounselingShowSuggestions(false);
                                   }}
                                   className="w-full px-3.5 py-2.5 text-left text-xs text-slate-700 dark:text-slate-350 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors flex items-center justify-between cursor-pointer"
